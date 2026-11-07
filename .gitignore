@@ -1,0 +1,13 @@
+# 本机数据、内核与构建产物都不入库
+data/
+vendor/
+dist/
+build/
+__pycache__/
+*.pyc
+*.spec
+.venv/
+/CampusLink.exe
+/_desktop/
+*.nupkg
+webview2-sdk-*/
