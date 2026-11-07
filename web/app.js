@@ -209,3 +209,8 @@ const deepPlane=params.get('plane');
 if(deepPlane){plane=deepPlane;document.querySelectorAll('[data-plane]').forEach(b=>b.classList.toggle('active',b.dataset.plane===deepPlane));}
 const deepLink=params.get('page');
 if(deepLink&&document.getElementById(deepLink))page(deepLink);else schedulePoll(0);
+// 每次打开都从页首开始，避免 WebView2 复用上次的滚动位置。
+if('scrollRestoration' in history)history.scrollRestoration='manual';
+const mainEl=document.querySelector('main');
+const toTop=()=>{if(mainEl)mainEl.scrollTop=0;window.scrollTo(0,0);};
+toTop();window.addEventListener('load',()=>{toTop();setTimeout(toTop,60)});
