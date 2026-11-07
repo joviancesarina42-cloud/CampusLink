@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 Push-Location $root
 try {
+    $running = Get-Process CampusLink, CampusLink.Desktop -ErrorAction SilentlyContinue
+    if ($running) { throw 'CampusLink 正在运行：请先从托盘退出，再重新构建。' }
     if (-not $NoDesktop) {
         & (Join-Path $root 'tools\build_desktop.ps1') -Destination (Join-Path $root 'dist\desktop-build')
         if ($LASTEXITCODE -ne 0) { throw '原生窗口编译失败' }
