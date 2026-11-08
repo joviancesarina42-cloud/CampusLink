@@ -453,7 +453,9 @@ class Manager:
             self.journal = None
             (DATA / 'recovery.json').unlink(missing_ok=True)
         self.active_config = self.active_text = None
-        self.state.update(phase='idle', error='')
+        # TUN 状态跟着内核一起结束，别让界面停在“TUN 已开启”。
+        self.state.update(phase='idle', error='', tun=False,
+                          coverage='TUN 未开启；业务列表只覆盖已接管连接')
         self.tracker = DeltaTracker()
         self.store.event('rollback', '已停止本工具链路并恢复原配置、原 TUN 和系统代理')
         return {'message': '已停止并恢复原网络配置'}

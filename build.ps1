@@ -27,6 +27,19 @@ try {
         New-Item -ItemType Directory -Force -Path $package | Out-Null
         Get-ChildItem -LiteralPath $desktop -File | Copy-Item -Destination $package -Force
     }
+    # 解压说明与启动器：先解除 Internet 标记，绕开未签名 exe 的拦截。
+    $extra = Join-Path $root 'packaging'
+    $target = Join-Path $root 'dist\CampusLink'
+    if (Test-Path -LiteralPath $extra) {
+        Get-ChildItem -LiteralPath $extra -File | Copy-Item -Destination $target -Force
+    }
+    $lines = foreach ($name in @('CampusLink.exe', '启动 CampusLink.cmd', '使用说明.txt')) {
+        $path = Join-Path $target $name
+        if (Test-Path -LiteralPath $path) {
+            '{0}  {1}' -f (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLower(), $name
+        }
+    }
+    if ($lines) { $lines | Set-Content -LiteralPath (Join-Path $target 'SHA256SUMS.txt') -Encoding utf8 }
     Write-Host '构建完成：dist\CampusLink\CampusLink.exe'
     Write-Host '运行前把 data\ 与 vendor\ 一并带上；这两项目录不进入版本库。'
 } finally {

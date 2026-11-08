@@ -55,7 +55,19 @@ WARP 是开箱可用的：首次初始化会自动 `warpscout register` 注册�
 
 **方式一：发布版（推荐）**
 
-下载 Releases 里的 `CampusLink-windows-x64.zip`，解压到任意目录，双击 `CampusLink.exe`。首次启动会请求管理员权限，因为它要接管 TUN 和系统代理。
+下载 Releases 里的 `CampusLink-windows-x64.zip`，**先右键 zip → 属性 → 勾选“解除锁定”**，再解压到任意目录，双击 `启动 CampusLink.cmd`。首次启动会请求管理员权限，因为它要接管 TUN 和系统代理。
+
+### Windows 提示“已保护你的电脑”
+
+exe 没有买代码签名证书，从浏览器下载后第一次运行会被 SmartScreen 拦一次。三条路，任选：
+
+| 做法 | 效果 |
+|---|---|
+| **解压前解除锁定**（推荐） | 右键 zip → 属性 → 勾选“解除锁定”。解压出来的文件不再带 Internet 标记，之后不会再提示 |
+| 已解压，双击 `启动 CampusLink.cmd` | 启动器会先对整个目录执行 `Unblock-File`，再拉起 exe |
+| 直接双击 exe 被拦 | 点“更多信息”→“仍要运行”，只需一次 |
+
+发布包里带 `SHA256SUMS.txt`，可以 `certutil -hashfile` 核对；源码运行（`python app.py`）完全不走这条路径，也不会触发提示。
 
 **方式二：源码运行**
 

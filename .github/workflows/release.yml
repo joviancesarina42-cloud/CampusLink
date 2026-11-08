@@ -27,13 +27,20 @@ jobs:
         run: .\build.ps1
       - name: Package
         shell: powershell
-        run: Compress-Archive -Path dist\CampusLink -DestinationPath CampusLink-windows-x64.zip -Force
+        run: |
+          Compress-Archive -Path dist\CampusLink -DestinationPath CampusLink-windows-x64.zip -Force
+          $hash = (Get-FileHash -LiteralPath CampusLink-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  CampusLink-windows-x64.zip" | Set-Content -LiteralPath SHA256SUMS.txt -Encoding utf8
       - uses: actions/upload-artifact@v4
         with:
           name: CampusLink-windows-x64
-          path: CampusLink-windows-x64.zip
+          path: |
+            CampusLink-windows-x64.zip
+            SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: CampusLink-windows-x64.zip
+          files: |
+            CampusLink-windows-x64.zip
+            SHA256SUMS.txt
           generate_release_notes: true
