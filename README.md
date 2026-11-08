@@ -45,7 +45,7 @@
 **方式二：源码运行**
 
 ```powershell
-git clone <本仓库>
+git clone https://github.com/joviancesarina42-cloud/CampusLink.git
 cd CampusLink
 python -m pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File tools\get-deps.ps1       # 下载 mihomo 与 warpscout 到 vendor\
