@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlsplit
 from campuslink import __version__
 from campuslink.common import ASSETS, DATA, write_json
 from campuslink.manager import Manager
-from campuslink.desktop import Desktop, SHOW_MESSAGE, window_message
+from campuslink.desktop import Desktop, EXIT_MESSAGE, SHOW_MESSAGE, window_message
 
 
 class LocalHTTPServer(ThreadingHTTPServer):
@@ -34,11 +34,29 @@ class LocalHTTPServer(ThreadingHTTPServer):
         super().server_bind()
 
 
+def backend_serves(port, timeout=0.8):
+    """True only when a live backend answers on the port; a leftover window host does not."""
+    import urllib.request
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(f'http://127.0.0.1:{port}/api/token', timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
 def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
     if os.name != 'nt':
         raise SystemExit('CampusLink 只支持 Windows：它依赖 WFP/TUN、Npcap 和 Win32 网络状态接口')
-    if not headless and window_message(SHOW_MESSAGE):
-        return
+    if not headless:
+        if backend_serves(port):
+            # 已有实例：把它的窗口带回前台，然后退出本次启动。
+            window_message(SHOW_MESSAGE)
+            return
+        # 端口没人应答，但窗口可能还在：上一次异常退出把窗口宿主留了下来。
+        # 直接用它只会得到一块点不动的界面，先请它退位，再启动自己的实例。
+        window_message(EXIT_MESSAGE)
+        time.sleep(0.4)
     token = secrets.token_urlsafe(32)
     holder = {}
     assets = {}
