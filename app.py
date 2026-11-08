@@ -143,6 +143,7 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
                     'import': manager.import_config, 'save': lambda: manager.save_settings(body),
                     'nodes-select': lambda: manager.select_nodes(body), 'nodes-probe': manager.probe_nodes,
                     'warp-register': manager.register_warp_account,
+                    'deps-install': manager.install_deps,
                     'capture-start': manager.capture_start,
                     'capture-stop': manager.capture_stop,
                     'probe': lambda: self.probe(manager), 'exit': lambda: self.exit_app(manager)}

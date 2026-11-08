@@ -38,7 +38,7 @@ async function action(name,body={}){
     const result=await response.json();
     if(!response.ok)throw Error(result.error||'操作失败');
     job={id:result.job,name};
-    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在恢复原配置、原 TUN 与系统代理…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在准备内核与 WARP 账户…','warp-register':'正在注册 WARP 账户…',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
+    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在恢复原配置、原 TUN 与系统代理…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在准备内核与 WARP 账户…','warp-register':'正在注册 WARP 账户…','deps-install':'正在从 GitHub 下载内核与 warpscout…',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
     $('notice').classList.remove('hidden');
     schedulePoll(0);
   }catch(e){toast(e.message);}
@@ -131,7 +131,7 @@ function chart(){
 function render(){
   const d=snapshot,s=d.state,c=d.capture;
   const busy=!!s.operation;
-  ['start','stop','save','import','preview','probe','capture','recover','exit','add-exception'].forEach(k=>$(k).disabled=busy);
+  ['start','stop','save','import','preview','probe','capture','recover','exit','add-exception','deps-install','warp-register'].forEach(k=>$(k).disabled=busy);
   $('start').disabled=busy||['running','recovery','starting','stopping'].includes(s.phase);
   $('stop').disabled=busy||!['running','recovery'].includes(s.phase);
   $('recover').disabled=busy||!['running','recovery'].includes(s.phase);
@@ -178,6 +178,7 @@ function render(){
     else if(name==='preview'){$('preview-content').textContent=JSON.stringify(result,null,2);$('preview-panel').classList.remove('hidden');$('preview-panel').scrollIntoView({behavior:'smooth',block:'start'});toast('内核校验通过，覆盖内容已列出。');}
     else if(name==='import'){formLoaded=false;const parts=[result.airport?'机场 '+result.airport:'仅 WARP'];parts.push(result.warp?'WARP 就绪':'WARP 未启用');if(result.notes&&result.notes.length)parts.push(result.notes.join('；'));toast(parts.join(' · '));}
     else if(name==='warp-register'){formLoaded=false;toast(result.message);}
+    else if(name==='deps-install'){formLoaded=false;const parts=[result.downloaded&&result.downloaded.length?'下载 '+result.downloaded.join('、'):'依赖已齐全'];parts.push(result.airport?'机场 '+result.airport:'仅 WARP');parts.push(result.warp?'WARP 就绪':'WARP 未启用');toast(parts.join(' · '));}
     else if(name==='probe'){toast(`机场 HTTPS：${result.airport.ok?'通过':result.airport.error}\nWARP HTTPS：${result.warp.ok?'通过':result.warp.error}`);}
     else if(name==='nodes-select'){nodeDirty=false;renderNodes();toast(result.message);}
     else if(name==='nodes-probe'){toast(['ai','default'].map(k=>`${k==='ai'?'AI 服务':'默认出口'}：${result.health[k].ok?(result.health[k].loc+' / '+result.health[k].ip):result.health[k].error}`).join('\n'));}
@@ -202,7 +203,7 @@ if(window.chrome?.webview)window.chrome.webview.addEventListener('message',e=>{i
 document.querySelectorAll('[data-page]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.goto)));
 document.querySelectorAll('[data-plane]').forEach(x=>x.addEventListener('click',()=>{plane=x.dataset.plane;document.querySelectorAll('[data-plane]').forEach(b=>b.classList.toggle('active',b===x));renderTable();schedulePoll(0);}));
-for(const name of ['start','stop','import','preview','probe','recover','exit','warp-register'])$(name).addEventListener('click',()=>action(name));
+for(const name of ['start','stop','import','preview','probe','recover','exit','warp-register','deps-install'])$(name).addEventListener('click',()=>action(name));
 $('capture').addEventListener('click',()=>action(snapshot.capture.running||snapshot.state.capture_requested?'capture-stop':'capture-start'));
 for(const role of ['ai','default'])$('node-'+role).addEventListener('change',()=>{nodeDirty=true;renderNodes();});
 $('nodes-apply').addEventListener('click',()=>action('nodes-select',{ai_node:$('node-ai').value,default_node:$('node-default').value}));

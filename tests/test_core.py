@@ -177,6 +177,17 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):validate_settings(s)
 
 
+class DepsTests(unittest.TestCase):
+    def test_asset_names_match_upstream_layout(self):
+        from campuslink import deps
+        tag = 'v1.2.3'
+        mihomo = deps.ASSETS['mihomo']['asset'].format(tag=tag, ver=tag.lstrip('v'))
+        warpscout = deps.ASSETS['warpscout']['asset'].format(tag=tag, ver=tag.lstrip('v'))
+        # mihomo 的文件名保留 v 前缀，warpscout 不带；弄错就 404。
+        self.assertEqual(mihomo, 'mihomo-windows-amd64-v1.2.3.zip')
+        self.assertEqual(warpscout, 'warpscout_1.2.3_windows_amd64.zip')
+
+
 class DiscoverTests(unittest.TestCase):
     def test_explicit_paths_win_over_installed_defaults(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -220,7 +220,7 @@ def import_local(settings: Settings):
     """Prepare local dependencies: kernel, optional airport profile, WARP account."""
     d = discover(settings.value)
     if not d['kernel']:
-        raise RuntimeError('没有找到 mihomo 内核：放到 vendor/mihomo.exe，或在“高级”里填写内核路径')
+        raise RuntimeError('没有找到 mihomo 内核：点击“下载内核与 warpscout”，或放到 vendor/mihomo.exe')
     VENDOR.mkdir(exist_ok=True)
     _copy_if_missing(d['kernel'], VENDOR / 'mihomo.exe')
     if d['warp']:

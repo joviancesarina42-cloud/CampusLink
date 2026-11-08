@@ -19,6 +19,7 @@ from .capture import Capture, physical_adapters
 from .common import CREATE_NO_WINDOW, DATA, VENDOR, atomic_write, is_admin, read_json, write_json
 from .config import (Settings, build_config, discover, import_local, register_warp,
                      render, validate_kernel)
+from .deps import install as install_component
 from .probe import check_trace
 from .system import enable_system_proxy, get_system_proxy, process_identity, set_system_proxy, terminate_identity
 from .traffic import DeltaTracker, Store, classify_connection, ip_family
@@ -95,6 +96,29 @@ class Manager:
         if result.get('notes'):
             detail += '（' + '；'.join(result['notes']) + '）'
         self.store.event('config', '已初始化本机依赖：' + detail)
+        return result
+
+    def install_deps(self):
+        if self.state['phase'] in ('running', 'starting', 'recovery'):
+            raise RuntimeError('请先停止并回滚，再下载依赖')
+        found = discover(self.settings.value)
+        done = []
+        if not found['kernel']:
+            install_component('mihomo')
+            done.append('mihomo')
+        if not found['warp']:
+            install_component('warpscout')
+            done.append('warpscout')
+        found = discover(self.settings.value)
+        if found['warp'] and not found['account']:
+            # 刚补上 warpscout，顺手把账户也注册好，否则“下载完仍然不能开”很反直觉。
+            register_warp(self.settings)
+            value = copy.deepcopy(self.settings.value)
+            value['warp_enable'] = True
+            self.settings.save(value)
+        result = import_local(self.settings)
+        result['downloaded'] = done
+        self.store.event('config', '已下载 ' + '、'.join(done) if done else '依赖已齐全，无需下载')
         return result
 
     def register_warp_account(self):

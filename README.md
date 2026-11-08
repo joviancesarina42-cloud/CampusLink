@@ -73,10 +73,12 @@ python app.py
 
 ### 第一次使用
 
-1. 点 **初始化本机依赖**。工具会复制内核、识别机场配置（如果有）、并在没有账户时自动注册 WARP。
+1. 点 **下载内核与 warpscout**（首次必点，约 75MB）。工具会从官方 Release 取来内核与 WARP 客户端，顺手识别机场配置、注册 WARP 账户。
 2. 点 **校验并查看覆盖内容**，确认规则和代理列表符合预期。
 3. 点 **开启 IPv6 链路**。TUN 模式需要管理员权限。
 4. 出问题点 **停止并回滚**，恢复开启前的内核配置、TUN 与系统代理。
+
+`vendor/` 里已经有 `mihomo.exe` 与 `warpscout.exe` 时，按钮只做初始化和注册，不会重复下载。
 
 > `data/`、`vendor/` 不入库。`data/` 里是本机凭据、订阅快照、SQLite 与回滚点，`vendor/` 里是内核与规则数据。迁移时两个目录一起带走。
 
@@ -154,7 +156,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # 打包到 dist/CampusLink
 ## 已知限制
 
 - 仅 Windows：依赖 WFP/TUN、Npcap 与 Win32 网络状态接口。
-- 需要自备 mihomo 内核；本仓库不分发内核与订阅。
+- 内核与 warpscout 由使用者的机器从官方 Release 下载，本仓库不转发这两个二进制。
+- 首次运行需要联网：约 75MB 的两个可执行文件，外加 mihomo 自己下载的约 20MB 地理数据（`geosite.dat`、`geoip.dat`、`Country.mmdb`）。
 - 物理流量监控需要 Npcap 与管理员；没有它们时其余功能可用，只是少一侧数据。
 - 不提供 IPv4 自动回退。目标只有 A 记录且没加例外时会明确失败。
 - 计费结果以网络提供方的账户为准；本工具只负责让流量走 IPv6，不承诺任何计费结果。
@@ -164,6 +167,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1   # 打包到 dist/CampusLink
 ```
 app.py                 本机 HTTP 接口与启动入口
 campuslink/config.py   设置、节点断言、配置生成、内核校验、WARP 注册
+campuslink/deps.py     从官方 Release 下载内核与 warpscout
 campuslink/manager.py  开启/回滚、采样、健康检查
 campuslink/capture.py  Npcap 被动抓包与地址分类
 campuslink/traffic.py  增量计算与 SQLite 存储
