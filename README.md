@@ -51,7 +51,7 @@ WARP 是开箱可用的：首次初始化会自动 `warpscout register` 注册�
 
 ## 安装
 
-需要 Windows 10/11 x64、一个 `mihomo` 内核。WARP 需要 `warpscout`（工具会自己注册账户），机场可选。
+需要 Windows 10/11 x64、一个 `mihomo` 内核。WARP 需要 `warpscout`（工具会自己注册账户），机场可选。这两个可执行文件都可以用 `tools\get-deps.ps1` 从官方 Release 一键下载。
 
 **方式一：发布版（推荐）**
 
@@ -63,6 +63,7 @@ WARP 是开箱可用的：首次初始化会自动 `warpscout register` 注册�
 git clone <本仓库>
 cd CampusLink
 python -m pip install -r requirements.txt
+powershell -ExecutionPolicy Bypass -File tools\get-deps.ps1        # 下载 mihomo 与 warpscout 到 vendor\
 powershell -ExecutionPolicy Bypass -File tools\build_desktop.ps1   # 编译原生窗口与托盘
 python tools/selfcheck.py      # 看缺什么：内核、warpscout、Npcap
 python app.py
@@ -169,7 +170,7 @@ campuslink/traffic.py  增量计算与 SQLite 存储
 campuslink/warp.py     warpscout 守护与端点重扫
 web/                   界面（无外部资源）
 desktop/               Windows 原生窗口（C# + WebView2）
-tools/                 自检与窗口编译
+tools/                 自检、依赖下载与窗口编译
 tests/                 离线回归测试
 ```
 
