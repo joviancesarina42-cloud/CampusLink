@@ -1,6 +1,6 @@
 # CampusLink
 
-**Windows 上的 IPv6 出口管理器。** 让能走 IPv6 的流量都走 IPv6，需要隧道时优先 WARP，VPN可选；每次开启前先落一份完整回滚点，失败自动还原。
+**Windows 上的 IPv6 出口管理器。** 让能走 IPv6 的流量都走 IPv6，需要隧道时优先 WARP，VPN 可选；每次开启前先落一份完整回滚点，失败自动还原。
 
 > **English:** CampusLink is a Windows desktop app that makes IPv6 the default egress for a mihomo kernel. It auto-registers a Cloudflare WARP account, falls back to native IPv6 where possible, optionally chains an airport over a pinned IPv6 first hop, and keeps verified rollback for every change. Requires Windows 10/11, a `mihomo` binary and `warpscout`; an airport subscription is optional. UI is Chinese. MIT licensed.
 
@@ -12,9 +12,9 @@
 
 - **视频**：工具把这些域名、进程和 CDN 网段交给 WARP，全程是 IPv6。
 - **Agent / AI 工具**：ChatGPT、Claude、Codex 单独走「AI 服务组」，可以指定出口。
-- **日常使用**：微信可收发消息文件、浏览器不需要特别处理。可能部分传统网站不通。国内域名优先走原生 IPv6，其余默认出口——没有VPN时是 WARP，有VPN时是所选节点。
+- **日常使用**：微信可收发消息文件、浏览器不需要特别处理。可能部分传统网站不通。国内域名优先走原生 IPv6，其余默认出口——没有 VPN 时是 WARP，有 VPN 时是所选节点。
 
-**推荐配置是WARP +&#x20;**&#x56;PN**订阅**：WARP 承接视频和那些不想占VPN流量的连接，VPN负责换地区和其余代理流量。公网流量里 IPv6 可达 **99% 以上**。
+**推荐配置是 WARP + VPN 订阅**：WARP 承接视频和那些不想占 VPN 流量的连接，VPN 负责换地区和其余代理流量。公网流量里 IPv6 可达 **99% 以上**。
 
 ## 功能
 
@@ -26,13 +26,13 @@
 
 ## 网络流量路径
 
-| 路径        | 走法                                    | 条件             |
-| --------- | ------------------------------------- | -------------- |
-| 原生 IPv6   | 直连 IPv6                               | 目标有 AAAA 且线路可达 |
-| IPv6 WARP | `warpscout` SOCKS → Cloudflare MASQUE | 无原生；视频、普通代理    |
-| IPv6 VPN  | VPN服务器 → 所选出口                         | 国际连接；网络兜底      |
+| 路径      | 走法                                  | 条件                   |
+| --------- | ------------------------------------- | ---------------------- |
+| 原生 IPv6 | 直连 IPv6                             | 目标有 AAAA 且线路可达 |
+| IPv6 WARP | `warpscout` SOCKS → Cloudflare MASQUE | 无原生；视频、普通代理 |
+| IPv6 VPN  | VPN 服务器 → 所选出口                 | 国际连接；网络兜底     |
 
-首次初始化会自动 `warpscout register` 注册一个免费账户。VPN是可选的，没有它就只跑「原生 IPv6 + WARP」，一些流量会无法连接。
+首次初始化会自动 `warpscout register` 注册一个免费账户。VPN 是可选的，没有它就只跑「原生 IPv6 + WARP」，一些流量会无法连接。
 
 ![流量与连接](docs/traffic.png)
 
@@ -40,7 +40,7 @@
 
 **方式一：发布版（推荐）**
 
-下载 Releases 里的 `CampusLink-windows-x64.zip`，**先右键 zip → 属性 → 勾选“解除锁定”**，再解压到任意目录，双击 `启动 CampusLink.cmd`。首次启动会请求管理员权限，因为它要接管 TUN 和系统代理。看不到解压后的exe文件可能是被电脑杀毒软件删除，但工具本身是安全可用的。
+下载 Releases 里的 `CampusLink-windows-x64.zip`，**先右键 zip → 属性 → 勾选「解除锁定」**，再解压到任意目录，双击 `启动 CampusLink.cmd`。首次启动会请求管理员权限，因为它要接管 TUN 和系统代理。看不到解压后的 exe 文件可能是被电脑杀毒软件删除，但工具本身是安全可用的。
 
 **方式二：源码运行**
 
@@ -48,9 +48,9 @@
 git clone <本仓库>
 cd CampusLink
 python -m pip install -r requirements.txt
-powershell -ExecutionPolicy Bypass -File tools\get-deps.ps1        # 下载 mihomo 与 warpscout 到 vendor\
-powershell -ExecutionPolicy Bypass -File tools\build_desktop.ps1   # 编译原生窗口与托盘
-python tools/selfcheck.py      # 看缺什么：内核、warpscout、Npcap
+powershell -ExecutionPolicy Bypass -File tools\get-deps.ps1       # 下载 mihomo 与 warpscout 到 vendor\
+powershell -ExecutionPolicy Bypass -File tools\build_desktop.ps1  # 编译原生窗口与托盘
+python tools/selfcheck.py                                         # 看缺什么：内核、warpscout、Npcap
 python app.py
 ```
 
@@ -58,29 +58,29 @@ python app.py
 
 ### 第一次使用
 
-1. 点 **下载内核与 warpscout**（必须，约 75MB）。工具会帮助下载内核与 WARP 客户端，识别VPN配置、注册 WARP 账户。
+1. 点 **下载内核与 warpscout**（必须，约 75MB）。工具会帮助下载内核与 WARP 客户端，识别 VPN 配置、注册 WARP 账户。
 2. 点 **开启 IPv6 链路**。TUN 模式需要管理员权限。
 
 ## 常见问题
 
 - 仅 Windows：依赖 WFP/TUN、Npcap 与 Win32 网络状态接口。
-- **无法启动？**&#x5185;核与 warpscout 由使用者的机器从官方 Release 下载。**“策略与配置”页，点击 “下载内核与 warpscout”按钮。**
+- **无法启动？** 内核与 warpscout 由使用者的机器从官方 Release 下载。**「策略与配置」页，点击「下载内核与 warpscout」按钮。**
 - 首次运行需要联网：约 75MB 的两个可执行文件，外加 mihomo 自己下载的约 20MB 地理数据（`geosite.dat`、`geoip.dat`、`Country.mmdb`）。
-- **流量监控有问题？**&#x7269;理流量监控需要 Npcap 与管理员；没有它们时其余功能可用，只是少一侧数据。**手动安装Npcap。**
-- **部分网站无法打开？**&#x4E0D;提供 IPv4 自动回退。目标只有 A 记录且没加例外时会明确失败。**手动加规则。**
+- **流量监控有问题？** 物理流量监控需要 Npcap 与管理员；没有它们时其余功能可用，只是少一侧数据。**手动安装 Npcap。**
+- **部分网站无法打开？** 不提供 IPv4 自动回退。目标只有 A 记录且没加例外时会明确失败。**手动加规则。**
 - 计费结果以网络提供方的账户为准；本工具只负责让流量走 IPv6，不承诺任何计费结果。
 
 ## 默认策略
 
-| 流量                  | 处理                         |
-| ------------------- | -------------------------- |
-| WARP 端点、VPN IPv6 入口 | 精确地址放行，包含 UDP/443          |
-| 回环、私有网段、内网直连域名/网段   | 直连                         |
-| B 站域名、CDN 网段、播放器进程  | TCP 走 WARP；UDP 阻断，促使回退 TCP |
-| AI 域名与进程            | AI 服务组所选节点                 |
-| 其余需要代理的连接           | 默认出口组；没有VPN时就是 WARP        |
-| 已知公网 IPv6 字面量       | 原生 IPv6 直连                 |
-| 其余                  | 默认出口组，**不自动回退公网 IPv4**     |
+| 流量                              | 处理                                |
+| --------------------------------- | ----------------------------------- |
+| WARP 端点、VPN IPv6 入口          | 精确地址放行，包含 UDP/443          |
+| 回环、私有网段、内网直连域名/网段 | 直连                                |
+| B 站域名、CDN 网段、播放器进程    | TCP 走 WARP；UDP 阻断，促使回退 TCP |
+| AI 域名与进程                     | AI 服务组所选节点                   |
+| 其余需要代理的连接                | 默认出口组；没有 VPN 时就是 WARP    |
+| 已知公网 IPv6 字面量              | 原生 IPv6 直连                      |
+| 其余                              | 默认出口组，**不自动回退公网 IPv4** |
 
 ![策略与配置](docs/settings.png)
 
@@ -88,13 +88,13 @@ python app.py
 
 **内部网站门户走内网**：`campus_domains: ["example.edu.cn"]`。这些域名会排除 fake-ip，用真实地址解析。
 
-**视频站不占VPN流量**：默认配置就是这样。TCP 走 WARP，UDP 被拒绝后播放器回退 TCP。想换成VPN传 UDP，把 `warp_udp` 改成 `airport`。
+**视频站不占 VPN 流量**：默认配置就是这样。TCP 走 WARP，UDP 被拒绝后播放器回退 TCP。想换成 VPN 传 UDP，把 `warp_udp` 改成 `airport`。
 
-**只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。让该目标走公网 IPv4 ，删除即撤销。
+**只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。让该目标走公网 IPv4，删除即撤销。
 
 **AI 走另一个地区**：在「节点分流」里给 AI 服务组单独选节点。
 
-**VPN入口是域名**：导入时工具会解析一次 AAAA，把能解析到公网 IPv6 的那个节点作为首跳并锁定地址；解析不到 IPv6 的节点不会被选为首跳。
+**VPN 入口是域名**：导入时工具会解析一次 AAAA，把能解析到公网 IPv6 的那个节点作为首跳并锁定地址；解析不到 IPv6 的节点不会被选为首跳。
 
 ## 两种运行方式
 
@@ -113,23 +113,23 @@ python app.py
 
 设置页可以直接改，「高级」里的路径类配置也可以写进 `data/settings.json`。
 
-| 键                                                | 含义                                                                          |
-| ------------------------------------------------ | --------------------------------------------------------------------------- |
-| `mode`                                           | `standalone` 自带内核；`attach` 接管已有内核（热加载配置，不改订阅文件）                             |
-| `source_config`                                  | 完整 mihomo 配置路径；留空则自动查找 Clash Verge 运行时配置                                    |
-| `kernel_path` / `warp_path` / `warp_account`     | 内核、`warpscout`、WARP 账户路径；留空自动查找                                             |
-| `airport_ipv6`                                   | 固定 IPv6 首跳入口。**留空即「仅 WARP」模式**，不加载VPN节点。订阅里入口写的是域名也没关系：导入时解析一次 AAAA 并锁定为字面量 |
-| `campus_domains`                                 | 内网直连域名（内部门户、统一认证等），走本机直连并优先 IPv6                                            |
-| `campus_cidrs`                                   | 额外直连的 IPv6 网段                                                               |
-| `native_domains`                                 | 强制原生 IPv6 的额外域名                                                             |
-| `native_cn`                                      | 国内域名尽量走原生 IPv6（依赖 `geosite.dat`）                                            |
-| `warp_domains` / `warp_processes` / `warp_cidrs` | 走 WARP 的域名、进程与 IPv4 网段；默认已含 B 站                                             |
-| `warp_udp`                                       | 这些目标的 UDP：`block` 阻断促使回退 TCP，或 `airport` 交给 IPv6 VPN                        |
-| `warp_enable`                                    | 关闭后不加载 `CL-WARP`，也不生成相关规则                                                   |
-| `exceptions`                                     | 逐项放宽：`domain`/`process` × `airport`/`ai`/`warp`/`native`/`ipv4`/`block`     |
-| `default_node` / `ai_node`                       | 默认出口与 AI 服务组各自选择的节点（需要VPN）                                                  |
-| `dns` / `endpoints`                              | IPv6 DNS 上游与 WARP 端点，均为 `[IPv6]:端口`                                         |
-| `socks_port` / `mixed_port` / `core_api_port`    | WARP SOCKS、独立代理、独立控制端口                                                      |
+| 键                                               | 含义                                                                                                                             |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`                                           | `standalone` 自带内核；`attach` 接管已有内核（热加载配置，不改订阅文件）                                                         |
+| `source_config`                                  | 完整 mihomo 配置路径；留空则自动查找 Clash Verge 运行时配置                                                                      |
+| `kernel_path` / `warp_path` / `warp_account`     | 内核、`warpscout`、WARP 账户路径；留空自动查找                                                                                   |
+| `airport_ipv6`                                   | 固定 IPv6 首跳入口。**留空即「仅 WARP」模式**，不加载 VPN 节点。订阅里入口写的是域名也没关系：导入时解析一次 AAAA 并锁定为字面量 |
+| `campus_domains`                                 | 内网直连域名（内部门户、统一认证等），走本机直连并优先 IPv6                                                                      |
+| `campus_cidrs`                                   | 额外直连的 IPv6 网段                                                                                                             |
+| `native_domains`                                 | 强制原生 IPv6 的额外域名                                                                                                         |
+| `native_cn`                                      | 国内域名尽量走原生 IPv6（依赖 `geosite.dat`）                                                                                    |
+| `warp_domains` / `warp_processes` / `warp_cidrs` | 走 WARP 的域名、进程与 IPv4 网段；默认已含 B 站                                                                                  |
+| `warp_udp`                                       | 这些目标的 UDP：`block` 阻断促使回退 TCP，或 `airport` 交给 IPv6 VPN                                                             |
+| `warp_enable`                                    | 关闭后不加载 `CL-WARP`，也不生成相关规则                                                                                         |
+| `exceptions`                                     | 逐项放宽：`domain`/`process` × `airport`/`ai`/`warp`/`native`/`ipv4`/`block`                                                     |
+| `default_node` / `ai_node`                       | 默认出口与 AI 服务组各自选择的节点（需要 VPN）                                                                                   |
+| `dns` / `endpoints`                              | IPv6 DNS 上游与 WARP 端点，均为 `[IPv6]:端口`                                                                                    |
+| `socks_port` / `mixed_port` / `core_api_port`    | WARP SOCKS、独立代理、独立控制端口                                                                                               |
 
 ## 目录
 
