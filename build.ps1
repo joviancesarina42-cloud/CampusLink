@@ -18,8 +18,8 @@ try {
         python -m PyInstaller --noconfirm --clean --onedir --windowed --uac-admin --name CampusLink `
             --add-data 'web;web' --hidden-import yaml --collect-all yaml app.py
         if ($LASTEXITCODE -eq 0) { break }
-        if ($attempt -ge 2) { throw 'PyInstaller 构建失败' }
-        Start-Sleep -Seconds 2
+        if ($attempt -ge 3) { throw 'PyInstaller 构建失败' }
+        Start-Sleep -Seconds 5
     } while ($true)
     $desktop = Join-Path $root 'dist\desktop-build'
     if (Test-Path -LiteralPath $desktop) {
