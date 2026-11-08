@@ -177,6 +177,26 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):validate_settings(s)
 
 
+class V6EntryTests(unittest.TestCase):
+    def test_literal_global_address_is_used_as_is(self):
+        from campuslink.config import v6_entry
+        self.assertEqual(v6_entry('2407:cdc0::1'), '2407:cdc0::1')
+        self.assertEqual(v6_entry('10.0.0.1'), '')
+        self.assertEqual(v6_entry('fe80::1'), '')
+        self.assertEqual(v6_entry(''), '')
+
+    def test_hostname_is_pinned_to_its_global_aaaa(self):
+        from campuslink import config
+        answer = [(socket.AF_INET6, socket.SOCK_STREAM, 6, '', ('2407:cdc0::1', 0, 0, 0))]
+        with patch('campuslink.config.socket.getaddrinfo', return_value=answer):
+            self.assertEqual(config.v6_entry('entry.example'), '2407:cdc0::1')
+
+    def test_hostname_without_aaaa_is_not_an_entry(self):
+        from campuslink import config
+        with patch('campuslink.config.socket.getaddrinfo', side_effect=socket.gaierror):
+            self.assertEqual(config.v6_entry('entry.example'), '')
+
+
 class DepsTests(unittest.TestCase):
     def test_asset_names_match_upstream_layout(self):
         from campuslink import deps

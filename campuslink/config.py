@@ -4,6 +4,7 @@ import copy
 import ipaddress
 import os
 import shutil
+import socket
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -193,6 +194,34 @@ def _copy_if_missing(src, dest):
     return True
 
 
+def v6_entry(server):
+    """Global IPv6 address for a node server: literal, or one AAAA answer.
+
+    Subscriptions often write the airport entry as a hostname that keeps an
+    AAAA record. Pinning the address at import time keeps the first hop on
+    IPv6 without re-resolving it at runtime.
+    """
+    server = str(server or '').strip()
+    if not server:
+        return ''
+    if is_global_v6(server):
+        return server
+    try:
+        ipaddress.ip_address(server)
+        return ''  # a literal, but not a global IPv6 one
+    except ValueError:
+        pass
+    try:
+        answers = socket.getaddrinfo(server, None, socket.AF_INET6)
+    except OSError:
+        return ''
+    for info in answers:
+        address = info[4][0]
+        if is_global_v6(address):
+            return address
+    return ''
+
+
 def register_warp(settings, fresh=False):
     """Create a WARP account with warpscout. IPv6 pools first, plain as fallback."""
     d = discover(settings.value)
@@ -246,14 +275,20 @@ def import_local(settings: Settings):
             c = yaml.safe_load(imported)
         except yaml.YAMLError:
             c = None
-        candidates = [p for p in (c or {}).get('proxies', []) if isinstance(p, dict)
-                      and p.get('type') != 'direct' and p.get('type') != 'socks5'
-                      and is_global_v6(p.get('server', ''))]
+        candidates = []
+        for proxy in (c or {}).get('proxies', []):
+            if not isinstance(proxy, dict) or proxy.get('type') in ('direct', 'socks5'):
+                continue
+            address = v6_entry(proxy.get('server', ''))
+            if address:
+                candidates.append((proxy, address))
         if candidates:
-            selected = next((p for p in candidates if p['server'] == value['airport_ipv6']), candidates[0])
+            selected, address = next(((p, a) for p, a in candidates if a == value['airport_ipv6']), candidates[0])
             value['airport_source_name'] = selected['name']
-            value['airport_source_host'] = selected['server']
-            value['airport_ipv6'] = selected['server']
+            value['airport_source_host'] = selected['server']  # 原始域名，供命中校验
+            value['airport_ipv6'] = address                     # 解析出的 IPv6 字面量，运行时用它
+            if address != selected['server']:
+                notes.append('机场入口按域名解析为 IPv6：' + address)
             airport = selected['name']
             if c.get('external-controller'):
                 value['api'] = 'http://' + c['external-controller']

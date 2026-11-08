@@ -121,7 +121,7 @@ DNS 上游只用 IPv6 字面量，不继承原配置的 IPv4 DNS / DoH 覆盖。
 | `mode` | `standalone` 自带内核；`attach` 接管已有内核（热加载配置，不改订阅文件） |
 | `source_config` | 完整 mihomo 配置路径；留空则自动查找 Clash Verge 运行时配置 |
 | `kernel_path` / `warp_path` / `warp_account` | 内核、`warpscout`、WARP 账户路径；留空自动查找 |
-| `airport_ipv6` | 固定 IPv6 首跳入口。**留空即「仅 WARP」模式**，不加载机场节点 |
+| `airport_ipv6` | 固定 IPv6 首跳入口。**留空即「仅 WARP」模式**，不加载机场节点。订阅里入口写的是域名也没关系：导入时解析一次 AAAA 并锁定为字面量 |
 | `campus_domains` | 内网直连域名（校园门户、统一认证等），走本机直连并优先 IPv6 |
 | `campus_cidrs` | 额外直连的 IPv6 网段 |
 | `native_domains` | 强制原生 IPv6 的额外域名 |
@@ -142,7 +142,9 @@ DNS 上游只用 IPv6 字面量，不继承原配置的 IPv4 DNS / DoH 覆盖。
 
 **只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。这是唯一会让该目标走公网 IPv4 的入口，删除即撤销。
 
-**AI 走另一个地区**：在「节点分流」里给 AI 服务组单独选节点；未选中 IPv6 入口的普通节点会自动经固定 IPv6 首跳中转。
+**AI 走另一个地区**：在「节点分流」里给 AI 服务组单独选节点；未选中 IPv6 入口的普通节点会自动经固定 IPv6 首跳中转——外层仍是 IPv6，出口是所选节点（实测：默认出口走日本、AI 组切美国后两者互不影响）。
+
+**机场入口是域名**：导入时工具会解析一次 AAAA，把能解析到公网 IPv6 的那个节点作为首跳并锁定地址；解析不到 IPv6 的节点不会被选为首跳。
 
 ## 两种运行方式
 
