@@ -23,6 +23,10 @@ class NodePolicyTests(unittest.TestCase):
         self.assertEqual(proxy['server'],'1.2.3.4')
         self.assertEqual(proxy['dialer-proxy'],ANCHOR)
 
+    def test_no_airport_means_no_selectable_nodes(self):
+        s,c=fixture();s.update(airport_ipv6='', airport_source_name='', airport_source_host='')
+        self.assertEqual(catalog(c,s), [])
+
     def test_subscription_metadata_is_not_a_node(self):
         s,c=fixture();p=copy.deepcopy(c['proxies'][1]);p['name']='剩余流量: 99 GB';c['proxies'].append(p)
         self.assertNotIn(p['name'],[n['id'] for n in catalog(c,s)])

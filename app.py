@@ -142,6 +142,7 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
                     'recover': manager.rollback, 'preview': manager.preview,
                     'import': manager.import_config, 'save': lambda: manager.save_settings(body),
                     'nodes-select': lambda: manager.select_nodes(body), 'nodes-probe': manager.probe_nodes,
+                    'warp-register': manager.register_warp_account,
                     'capture-start': manager.capture_start,
                     'capture-stop': manager.capture_stop,
                     'probe': lambda: self.probe(manager), 'exit': lambda: self.exit_app(manager)}
@@ -171,7 +172,7 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
         def probe(manager):
             from campuslink.probe import check_trace
             cfg = manager.active_config or manager.source()
-            port = cfg.get('mixed-port', 7897)
+            port = cfg.get('mixed-port') or manager.settings.value['mixed_port']
             result = check_trace(port)
             manager.state['health'] = result
             warp = next((p for p in cfg.get('proxies',[]) if p.get('type') == 'socks5'), None)

@@ -111,7 +111,7 @@ class RecoveryTests(unittest.TestCase):
             api.request.return_value=general
             core=Mock(pid=123);core.poll.return_value=None
             with patch('campuslink.manager.DATA',Path(temp)),patch('campuslink.manager.validate_kernel'), \
-                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':''}), \
+                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':'','account':'acct.json'}), \
                     patch('campuslink.manager.Mihomo',return_value=api),patch('campuslink.manager.socket.socket'), \
                     patch('campuslink.manager.start_logged',return_value=core), \
                     patch('campuslink.manager.process_identity',return_value={'pid':123}), \
@@ -183,7 +183,7 @@ class RecoveryTests(unittest.TestCase):
             manager,api=self.manager()
             manager.warp.start.side_effect=RuntimeError('SOCKS port occupied')
             with patch('campuslink.manager.DATA',Path(temp)),patch('campuslink.manager.validate_kernel'), \
-                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':''}),patch('campuslink.manager.Mihomo',return_value=api):
+                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':'','account':'acct.json'}),patch('campuslink.manager.Mihomo',return_value=api):
                 with self.assertRaisesRegex(RuntimeError,'SOCKS port occupied'):manager.start()
                 self.assertEqual(api.reload.call_count,2)
                 self.assertIn('server: entry.example',api.reload.call_args.args[0])
@@ -197,7 +197,7 @@ class RecoveryTests(unittest.TestCase):
             manager.warp.start.side_effect=RuntimeError('start failed')
             api.reload.side_effect=[None,RuntimeError('API unavailable during rollback')]
             with patch('campuslink.manager.DATA',Path(temp)),patch('campuslink.manager.validate_kernel'), \
-                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':''}),patch('campuslink.manager.Mihomo',return_value=api):
+                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':'','account':'acct.json'}),patch('campuslink.manager.Mihomo',return_value=api):
                 with self.assertRaisesRegex(RuntimeError,'start failed'):manager.start()
                 self.assertEqual(manager.state['phase'],'recovery')
                 self.assertIsNotNone(manager.journal)
@@ -205,7 +205,8 @@ class RecoveryTests(unittest.TestCase):
 
     def test_validation_failure_makes_no_network_change(self):
         manager,api=self.manager()
-        with patch('campuslink.manager.validate_kernel',side_effect=RuntimeError('invalid candidate')):
+        with patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':'','account':'acct.json'}), \
+                patch('campuslink.manager.validate_kernel',side_effect=RuntimeError('invalid candidate')):
             with self.assertRaisesRegex(RuntimeError,'invalid candidate'):manager.start()
         api.reload.assert_not_called();manager.warp.start.assert_not_called()
         self.assertIsNone(manager.journal)
@@ -214,7 +215,7 @@ class RecoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             manager,api=self.manager()
             with patch('campuslink.manager.DATA',Path(temp)),patch('campuslink.manager.validate_kernel'), \
-                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':''}),patch('campuslink.manager.Mihomo',return_value=api):
+                    patch('campuslink.manager.discover',return_value={'kernel':'mihomo.exe','runtime':'','account':'acct.json'}),patch('campuslink.manager.Mihomo',return_value=api):
                 manager.start();self.assertEqual(manager.state['phase'],'running')
                 self.assertTrue((Path(temp)/'recovery.json').exists())
                 manager.rollback();self.assertEqual(manager.state['phase'],'idle')

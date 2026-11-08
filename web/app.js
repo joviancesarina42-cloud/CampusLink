@@ -11,7 +11,7 @@ let nodeDirty=false,nodeCatalogKey='';
 let activePage='overview',pollTimer=null,polling=false,hostHidden=false,pollAgain=false;
 const textFields=['mode','airport_ipv6','api','warp_udp','source_config','kernel_path','warp_path'];
 const numberFields=['socks_port','mixed_port','core_api_port','check_seconds','failure_threshold'];
-const listFields=['endpoints','dns','campus_domains','campus_cidrs','native_domains','warp_domains','warp_processes'];
+const listFields=['endpoints','dns','campus_domains','campus_cidrs','native_domains','warp_domains','warp_processes','warp_cidrs'];
 const checkFields=['native_cn','warp_enable','tun','auto_capture'];
 
 function bytes(n){
@@ -27,7 +27,7 @@ function page(name){
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===name));
   const titles={overview:'链路概览',nodes:'节点分流',traffic:'流量与连接',settings:'策略与配置',activity:'记录与恢复'};
   $('page-title').textContent=titles[name];
-  $('subtitle').textContent={overview:'看清每一条链路，优先通过 IPv6 通信。',nodes:'AI 与其他服务分别选择出口，校园网首跳继续使用 IPv6。',traffic:'从应用负载到物理网卡，逐条核对真实通信路径。',settings:'先覆盖更多 IPv6 通信，再按实际测试逐项调整。',activity:'所有变更有记录，随时恢复到开启前的网络状态。'}[name];
+  $('subtitle').textContent={overview:'看清每一条链路，优先通过 IPv6 通信。',nodes:'AI 与其他服务分别选择出口。',traffic:'从应用负载到物理网卡，逐条核对真实路径。',settings:'先覆盖更多 IPv6 通信，再按实测调整。',activity:'所有变更都有记录，可恢复到开启前。'}[name];
   if(name==='overview')requestAnimationFrame(chart);
   schedulePoll(0);
 }
@@ -38,7 +38,7 @@ async function action(name,body={}){
     const result=await response.json();
     if(!response.ok)throw Error(result.error||'操作失败');
     job={id:result.job,name};
-    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在恢复原配置、原 TUN 与系统代理…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在导入本机配置与依赖…',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
+    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在恢复原配置、原 TUN 与系统代理…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在准备内核与 WARP 账户…','warp-register':'正在注册 WARP 账户…',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
     $('notice').classList.remove('hidden');
     schedulePoll(0);
   }catch(e){toast(e.message);}
@@ -55,7 +55,7 @@ function fillForm(s){
   $('capture_interfaces').value=(s.capture_interfaces||[]).join(', ');
   exceptions=structuredClone(s.exceptions||[]);
   renderExceptions();
-  $('airport-source').textContent='IPv6 首跳节点：'+(s.airport_source_name||'尚未导入')+'。普通节点经此中转保持外层 IPv6；AI 与默认出口在“节点分流”中分别选择。';
+  $('airport-source').textContent=s.airport_source_name?('IPv6 首跳节点：'+s.airport_source_name):'未设置：只用 WARP 与原生 IPv6。';
   formLoaded=true;
 }
 function formValues(){
@@ -73,16 +73,24 @@ function renderExceptions(){
 function renderNodes(){
   const info=snapshot.nodes||{catalog:[],selected:{}};
   const nodes=info.catalog||[],key=JSON.stringify(nodes.map(n=>[n.id,n.path]));
+  const noNodes=!nodes.length;
   if(key!==nodeCatalogKey){
     for(const role of ['ai','default']){
       const current=nodeDirty?$('node-'+role).value:info.selected[role];
-      $('node-'+role).innerHTML=(!nodes.some(n=>n.id===current)?'<option value="" disabled selected>原选择不存在，请重新选择</option>':'')+nodes.map(n=>`<option value="${esc(n.id)}">${esc(n.name)} · ${n.path==='direct6'?'IPv6 直连':'经 IPv6 首跳中转'}</option>`).join('');
+      const empty=noNodes?'未配置机场':'原选择不存在，请重新选择';
+      $('node-'+role).innerHTML=(!nodes.some(n=>n.id===current)?`<option value="" disabled selected>${empty}</option>`:'')+nodes.map(n=>`<option value="${esc(n.id)}">${esc(n.name)} · ${n.path==='direct6'?'IPv6 直连':'经 IPv6 首跳中转'}</option>`).join('');
       if(nodes.some(n=>n.id===current))$('node-'+role).value=current;
     }
     nodeCatalogKey=key;
   }
   if(!nodeDirty){for(const role of ['ai','default'])$('node-'+role).value=nodes.some(n=>n.id===info.selected[role])?info.selected[role]:'';}
   for(const role of ['ai','default']){
+    if(noNodes){
+      $('node-'+role+'-route').textContent=info.error||'未配置机场：当前只用 WARP + 原生 IPv6。';
+      $('node-'+role+'-status').textContent='未使用';$('node-'+role+'-status').className='pill muted';
+      $('node-'+role+'-health').textContent='';
+      continue;
+    }
     const node=nodes.find(n=>n.id===$('node-'+role).value);
     $('node-'+role+'-route').textContent=node?(node.path==='direct6'?`电脑 → IPv6 → ${node.name}`:`电脑 → IPv6 首跳：${node.gateway} → 出口：${node.name}`):info.error||'原选择已失效，请重新选择或导入节点';
     const h=snapshot.state.node_health?.[role];
@@ -95,7 +103,7 @@ function renderNodes(){
   $('nodes-probe').disabled=busy||snapshot.state.phase!=='running';
   $('nodes-selection-state').textContent=nodeDirty?'选择尚未应用':snapshot.state.phase==='running'?'当前选择已应用于新连接':'当前选择已保存，开启链路后生效';
   $('ai-rule-count').textContent=`${info.ai_rule_count||0} 条域名规则`;
-  $('ai-coverage').textContent=`AI 进程：${(snapshot.settings.ai_processes||[]).join('、')}；同时匹配导入的 AI 域名规则与常见 OpenAI、Claude、Gemini、Perplexity 等域名。`;
+  $('ai-coverage').textContent=noNodes?'未配置机场时 AI 域名走 WARP；配置机场后可按节点分流。':`AI 进程：${(snapshot.settings.ai_processes||[]).join('、')}。`;
 }
 function renderTable(){
   if(!snapshot)return;
@@ -137,7 +145,7 @@ function render(){
   $('wire-v6').textContent=wireOK||v6.total?bytes(v6.total):'—';$('wire-v4').textContent=wireOK||v4.total?bytes(v4.total):'—';
   $('wire-total').textContent=wireOK||v6.total+v4.total?bytes(v6.total+v4.total):'—';$('wire-lan').textContent=wireOK||lan.total?bytes(lan.total):'—';
   $('wire-share').textContent=`IPv6 占比 ${v6.total+v4.total?(100*v6.total/(v6.total+v4.total)).toFixed(1)+'%':'—'} · 物理 IP 字节`;
-  for(const [id,key]of[['v6','ipv6'],['v4','ipv4']]){const r=s.rates[key]||[0,0];$('rate-'+id).textContent=c.running?`↓ ${bytes(r[1])}/s   ↑ ${bytes(r[0])}/s`:'物理监控未运行 / 当前统计不完整';}
+  for(const [id,key]of[['v6','ipv6'],['v4','ipv4']]){const r=s.rates[key]||[0,0];$('rate-'+id).textContent=c.running?`↓ ${bytes(r[1])}/s   ↑ ${bytes(r[0])}/s`:'当前未采样速率';}
   $('capture-label').textContent=c.running?`${c.interfaces.map(x=>x.Name).join(' / ')} · 驱动丢包 ${c.dropped}`:s.capture_requested?'物理监控等待网络恢复；恢复后自动重试，等待期间不计数':'物理监控已暂停；暂停期间不计数';
   $('capture').textContent=c.running||s.capture_requested?'暂停监控':'开启监控';
   const warpOn=!!d.settings.warp_enable;
@@ -146,8 +154,9 @@ function render(){
   $('warp-detail').textContent=!warpOn?'WARP 未启用：不加载 CL-WARP，也不生成对应规则。':wh?.ok?`${wh.colo} · ${wh.ms} ms · warp=${wh.warp} · ${d.warp.endpoint||s.observed_warp_ipv6||'外层地址待确认'}`:shortError(wh?.error)||'启动后自动探测、重启与更换 IPv6 端点';
   const warpStateEl=$('warp-state');
   if(warpStateEl){warpStateEl.textContent=warpOn?'已启用':'未启用';warpStateEl.className='pill '+(warpOn?'green':'muted');}
-  $('airport-status').textContent=s.health.ok?'HTTPS 通过':'待验证';$('airport-status').className='pill '+(s.health.ok?'green':'amber');
-  $('airport-detail').textContent=s.health.ok?`${s.health.colo} · ${s.health.ms} ms · 目标出口 ${s.health.ip}`:shortError(s.health.error)||d.settings.airport_ipv6||'尚未导入 IPv6 首跳';
+  const airportOn=!!d.settings.airport_ipv6;
+  $('airport-status').textContent=!airportOn?'未配置':s.health.ok?'HTTPS 通过':'待验证';$('airport-status').className='pill '+(!airportOn?'muted':s.health.ok?'green':'amber');
+  $('airport-detail').textContent=!airportOn?'没有设置 IPv6 首跳，流量只走 WARP 与原生 IPv6。':s.health.ok?`${s.health.colo} · ${s.health.ms} ms · 目标出口 ${s.health.ip}`:shortError(s.health.error)||d.settings.airport_ipv6;
   if(activePage==='overview')$('business-summary').innerHTML=['native6','tunnel6','ipv4','unknown'].map(k=>{const n=totals(k,'business');return `<div class="biz-item"><span>${esc(labels[k])}</span><strong>${bytes(n.total)}</strong><small>↓ ${bytes(n.down)}　↑ ${bytes(n.up)}</small></div>`;}).join('');
   const selected=$('day').value||d.day,days=[...new Set([d.day,...(d.days||[])])];
   if(!days.includes(selected))days.unshift(selected);
@@ -167,7 +176,8 @@ function render(){
     $('notice').classList.add('hidden');
     if(error)toast(error);
     else if(name==='preview'){$('preview-content').textContent=JSON.stringify(result,null,2);$('preview-panel').classList.remove('hidden');$('preview-panel').scrollIntoView({behavior:'smooth',block:'start'});toast('内核校验通过，覆盖内容已列出。');}
-    else if(name==='import'){formLoaded=false;toast('本机配置与依赖已导入。');}
+    else if(name==='import'){formLoaded=false;const parts=[result.airport?'机场 '+result.airport:'仅 WARP'];parts.push(result.warp?'WARP 就绪':'WARP 未启用');if(result.notes&&result.notes.length)parts.push(result.notes.join('；'));toast(parts.join(' · '));}
+    else if(name==='warp-register'){formLoaded=false;toast(result.message);}
     else if(name==='probe'){toast(`机场 HTTPS：${result.airport.ok?'通过':result.airport.error}\nWARP HTTPS：${result.warp.ok?'通过':result.warp.error}`);}
     else if(name==='nodes-select'){nodeDirty=false;renderNodes();toast(result.message);}
     else if(name==='nodes-probe'){toast(['ai','default'].map(k=>`${k==='ai'?'AI 服务':'默认出口'}：${result.health[k].ok?(result.health[k].loc+' / '+result.health[k].ip):result.health[k].error}`).join('\n'));}
@@ -192,7 +202,7 @@ if(window.chrome?.webview)window.chrome.webview.addEventListener('message',e=>{i
 document.querySelectorAll('[data-page]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.goto)));
 document.querySelectorAll('[data-plane]').forEach(x=>x.addEventListener('click',()=>{plane=x.dataset.plane;document.querySelectorAll('[data-plane]').forEach(b=>b.classList.toggle('active',b===x));renderTable();schedulePoll(0);}));
-for(const name of ['start','stop','import','preview','probe','recover','exit'])$(name).addEventListener('click',()=>action(name));
+for(const name of ['start','stop','import','preview','probe','recover','exit','warp-register'])$(name).addEventListener('click',()=>action(name));
 $('capture').addEventListener('click',()=>action(snapshot.capture.running||snapshot.state.capture_requested?'capture-stop':'capture-start'));
 for(const role of ['ai','default'])$('node-'+role).addEventListener('change',()=>{nodeDirty=true;renderNodes();});
 $('nodes-apply').addEventListener('click',()=>action('nodes-select',{ai_node:$('node-ai').value,default_node:$('node-default').value}));

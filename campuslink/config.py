@@ -32,7 +32,12 @@ DEFAULTS = {
     'airport_ipv6': '', 'airport_source_name': '', 'airport_source_host': '',
     'endpoints': list(STANDARD_V6_ENDPOINTS),
     'campus_domains': [], 'campus_cidrs': [], 'native_domains': [],
-    'warp_domains': [], 'warp_processes': [], 'warp_udp': 'block',
+    # 默认就是一套可用的“视频走 WARP、UDP 逼回 TCP”配置。
+    'warp_domains': ['bilibili.com', 'bilibili.tv', 'bilivideo.com', 'bilivideo.cn',
+                     'hdslb.com', 'biliapi.net', 'biliapi.com', 'szbdyd.com'],
+    'warp_processes': ['哔哩哔哩.exe', 'bilibili.exe'],
+    'warp_cidrs': ['111.33.0.0/16', '111.31.0.0/16', '182.48.108.0/24'],
+    'warp_udp': 'block',
     'native_cn': True, 'exceptions': [],
     'dns': ['[2400:3200::1]:53', '[2402:4e00::]:53'],
     'capture_interfaces': [], 'check_seconds': 25, 'failure_threshold': 3,
@@ -76,6 +81,12 @@ def validate_settings(s):
                 raise ValueError
         except ValueError:
             raise ValueError(f'内网 IPv6 网段格式无效：{network}')
+    for network in s.get('warp_cidrs', []):
+        try:
+            if ipaddress.ip_network(network.strip(), strict=False).version != 4:
+                raise ValueError
+        except ValueError:
+            raise ValueError(f'WARP 域名对应的 IPv4 网段无效：{network}')
     for e in s['exceptions']:
         if e.get('kind') not in ('domain', 'process') or e.get('route') not in ('airport', 'ai', 'warp', 'ipv4', 'native', 'block'):
             raise ValueError('例外规则类型或路线无效')
@@ -156,8 +167,12 @@ def discover(settings=None):
                           *[d / 'clash-verge.yaml' for d in dirs]])
     source = first_file([s.get('source_config'), os.environ.get('CAMPUSLINK_SOURCE'),
                          DATA / 'source.yaml', runtime])
+    # warpscout writes its account next to the binary by default.
+    warp_dir = Path(warp).parent if warp else None
     account = first_file([s.get('warp_account'), DATA / 'warp-account.json',
-                          VENDOR / 'warp-account.json', ROOT / 'warp-account.json'])
+                          VENDOR / 'warp-account.json', ROOT / 'warp-account.json',
+                          VENDOR / 'warpscout-account.json', ROOT / 'warpscout-account.json',
+                          warp_dir / 'warpscout-account.json' if warp_dir else ''])
     verge_dir = next((str(d) for d in dirs if d.is_dir()), str(dirs[0]) if dirs else '')
     return {'verge_dir': verge_dir, 'runtime': runtime, 'source': source,
             'kernel': kernel, 'warp': warp, 'account': account,
@@ -178,67 +193,113 @@ def _copy_if_missing(src, dest):
     return True
 
 
-def import_local(settings: Settings):
-    """Import a full mihomo profile plus the local binaries this tool drives."""
+def register_warp(settings, fresh=False):
+    """Create a WARP account with warpscout. IPv6 pools first, plain as fallback."""
     d = discover(settings.value)
-    source_path = Path(d['source']) if d['source'] else None
-    if not source_path or not source_path.is_file():
-        raise RuntimeError('没有找到可导入的 mihomo 配置：请把完整配置放到 data/source.yaml，'
-                           '或在“策略与配置”里填写配置来源路径')
-    text = source_path.read_text('utf-8-sig')
-    c = yaml.safe_load(text)
-    if not isinstance(c, dict) or not isinstance(c.get('proxies'), list) or not c['proxies']:
-        raise RuntimeError('该文件不是完整的 mihomo 配置：缺少 proxies 列表')
-    candidates = [p for p in c['proxies'] if p.get('type') != 'direct'
-                  and is_global_v6(p.get('server', '')) and p.get('type') != 'socks5']
-    if not candidates:
-        raise RuntimeError('配置里没有带公网 IPv6 入口的节点；本工具需要一个 IPv6 首跳作为锚点')
-    selected = next((p for p in candidates if p['server'] == settings.value['airport_ipv6']), candidates[0])
+    if not d['warp']:
+        raise RuntimeError('没有找到 warpscout：把它放到 vendor/warpscout.exe 或填写路径')
+    target = DATA / 'warp-account.json'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    binary = Path(d['warp'])
+    base = [str(binary), 'register', '-a', str(target)] + (['-fresh'] if fresh else [])
+    attempts = [base + ['-6'], list(base)]
+    detail = ''
+    for argv in attempts:
+        try:
+            result = run(argv, timeout=180, cwd=str(binary.parent))
+        except Exception as error:
+            detail = str(error)
+            continue
+        if target.is_file() and target.stat().st_size > 0:
+            return str(target)
+        detail = (result.stderr or result.stdout).decode('utf-8', 'replace')[-400:]
+    raise RuntimeError('WARP 账户注册失败：' + (detail.strip() or '没有拿到账户文件'))
+
+
+def import_local(settings: Settings):
+    """Prepare local dependencies: kernel, optional airport profile, WARP account."""
+    d = discover(settings.value)
     if not d['kernel']:
-        raise RuntimeError('没有找到 mihomo 内核：请把它放到 vendor/mihomo.exe，或填写内核路径')
+        raise RuntimeError('没有找到 mihomo 内核：放到 vendor/mihomo.exe，或在“高级”里填写内核路径')
     VENDOR.mkdir(exist_ok=True)
     _copy_if_missing(d['kernel'], VENDOR / 'mihomo.exe')
     if d['warp']:
         _copy_if_missing(d['warp'], VENDOR / 'warpscout.exe')
     # Rule data travels with the profile; GEOSITE rules need it at runtime.
-    for folder in (source_path.parent, Path(d['kernel']).parent, Path(d['verge_dir'] or '.')):
+    for folder in (VENDOR, Path(d['kernel']).parent, Path(d['verge_dir'] or '.')):
         for pattern in ('*.dat', '*.mmdb', 'wintun.dll'):
             for found in folder.glob(pattern):
                 _copy_if_missing(found, VENDOR / found.name)
-    warp_enabled = True
-    if d['account']:
-        _copy_if_missing(d['account'], DATA / 'warp-account.json')
-    elif not (DATA / 'warp-account.json').exists():
-        warp_enabled = False
-    atomic_write(DATA / 'source.yaml', text)
+
     value = copy.deepcopy(settings.value)
-    value['airport_source_name'] = selected['name']
-    value['airport_source_host'] = selected['server']
-    value['airport_ipv6'] = selected['server']
-    value['warp_enable'] = warp_enabled
-    if c.get('external-controller'):
-        value['api'] = 'http://' + c['external-controller']
-    provider = c.get('rule-providers', {}).get('AI', {})
-    rules = []
-    if provider.get('path'):
-        cache = Path(provider['path'])
-        if not cache.is_absolute():
-            cache = source_path.parent / cache
-        if cache.is_file() and provider.get('behavior') == 'classical':
-            payload = cache.read_text('utf-8-sig')
-            try:
-                parsed = yaml.safe_load(payload)
-                rules = parsed.get('payload', []) if isinstance(parsed, dict) else payload.splitlines()
-            except yaml.YAMLError:
-                rules = payload.splitlines()
-            atomic_write(DATA / 'ai-rules-source.txt', payload)
-    value['ai_extra_rules'] = [r.strip() for r in rules if isinstance(r, str)
-        and len(r.strip().split(',')) == 2
-        and r.strip().split(',')[0] in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD')]
+    notes = []
+    airport = ''
+    used_source = ''
+    source_path = Path(d['source']) if d['source'] else None
+    imported = None
+    if source_path and source_path.is_file() and source_path.resolve() != (DATA / 'source.yaml').resolve():
+        imported = source_path.read_text('utf-8-sig')
+    elif (DATA / 'source.yaml').is_file():
+        imported = (DATA / 'source.yaml').read_text('utf-8-sig')
+    if imported:
+        try:
+            c = yaml.safe_load(imported)
+        except yaml.YAMLError:
+            c = None
+        candidates = [p for p in (c or {}).get('proxies', []) if isinstance(p, dict)
+                      and p.get('type') != 'direct' and p.get('type') != 'socks5'
+                      and is_global_v6(p.get('server', ''))]
+        if candidates:
+            selected = next((p for p in candidates if p['server'] == value['airport_ipv6']), candidates[0])
+            value['airport_source_name'] = selected['name']
+            value['airport_source_host'] = selected['server']
+            value['airport_ipv6'] = selected['server']
+            airport = selected['name']
+            if c.get('external-controller'):
+                value['api'] = 'http://' + c['external-controller']
+            provider = c.get('rule-providers', {}).get('AI', {})
+            rules = []
+            if provider.get('path'):
+                cache = Path(provider['path'])
+                if not cache.is_absolute():
+                    cache = source_path.parent / cache if source_path else cache
+                if cache.is_file() and provider.get('behavior') == 'classical':
+                    payload = cache.read_text('utf-8-sig')
+                    try:
+                        parsed = yaml.safe_load(payload)
+                        rules = parsed.get('payload', []) if isinstance(parsed, dict) else payload.splitlines()
+                    except yaml.YAMLError:
+                        rules = payload.splitlines()
+                    atomic_write(DATA / 'ai-rules-source.txt', payload)
+            value['ai_extra_rules'] = [r.strip() for r in rules if isinstance(r, str)
+                and len(r.strip().split(',')) == 2
+                and r.strip().split(',')[0] in ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD')]
+            atomic_write(DATA / 'source.yaml', imported)
+            used_source = str(source_path) if source_path else str(DATA / 'source.yaml')
+        else:
+            value.update(airport_ipv6='', airport_source_name='', airport_source_host='')
+            notes.append('机场配置里没有公网 IPv6 入口，按“仅 WARP”模式运行')
+    else:
+        value.update(airport_ipv6='', airport_source_name='', airport_source_host='')
+        notes.append('没有机场配置，按“仅 WARP”模式运行')
+
+    if value.get('warp_enable', True):
+        if d['account']:
+            _copy_if_missing(d['account'], DATA / 'warp-account.json')
+        if not (DATA / 'warp-account.json').is_file():
+            if not d['warp']:
+                value['warp_enable'] = False
+                notes.append('没有 warpscout，WARP 未启用')
+            else:
+                try:
+                    register_warp(settings)
+                except Exception as error:
+                    value['warp_enable'] = False
+                    notes.append(str(error))
     settings.save(value)
-    return {'airport': selected['name'], 'server': selected['server'],
-            'kernel': str(VENDOR / 'mihomo.exe'), 'warp': warp_enabled,
-            'source': str(source_path)}
+    return {'airport': airport, 'warp': bool(value['warp_enable']),
+            'kernel': str(VENDOR / 'mihomo.exe'),
+            'source': used_source, 'notes': notes}
 
 
 def is_global_v6(value):
@@ -253,26 +314,33 @@ def build_config(source, settings, standalone=False):
     """Build from a copy; never publish a subscription which lost its pinned node."""
     s = settings
     validate_settings(s)
-    if not s['airport_ipv6']:
-        raise ValueError('还没有导入本机配置：请先导入，或填写固定 IPv6 首跳入口')
-    c = copy.deepcopy(source)
-    matches = [p for p in c.get('proxies', []) if p.get('name') == s['airport_source_name']
-               and p.get('server') == s['airport_source_host']]
-    if len(matches) != 1:
-        raise ValueError('来源节点未唯一命中：订阅可能换入口。保留上一份配置，请重新导入核实')
-    airport = copy.deepcopy(matches[0])
-    if airport.get('type') not in ('hysteria2', 'tuic', 'ss', 'vmess', 'vless', 'trojan', 'hysteria', 'wireguard'):
-        raise ValueError('来源节点协议未验收，不能保证其 IPv6 出站')
-    airport.update(name=ANCHOR, server=s['airport_ipv6'])
-    airport.pop('dialer-proxy', None)
-    managed, groups = build_nodes(source, s, airport)
-    c['proxies'] = managed + [{'name': NATIVE, 'type': 'direct', 'ip-version': 'ipv6'}]
+    if not s['airport_ipv6'] and not s['warp_enable']:
+        raise ValueError('机场和 WARP 都没有启用：至少需要其中之一')
+    c = copy.deepcopy(source) if source else {}
+    managed, groups = [], []
+    if s['airport_ipv6']:
+        matches = [p for p in c.get('proxies', []) if p.get('name') == s['airport_source_name']
+                   and p.get('server') == s['airport_source_host']]
+        if len(matches) != 1:
+            raise ValueError('来源节点未唯一命中：订阅可能换入口。保留上一份配置，请重新导入核实')
+        airport = copy.deepcopy(matches[0])
+        if airport.get('type') not in ('hysteria2', 'tuic', 'ss', 'vmess', 'vless', 'trojan', 'hysteria', 'wireguard'):
+            raise ValueError('来源节点协议未验收，不能保证其 IPv6 出站')
+        airport.update(name=ANCHOR, server=s['airport_ipv6'])
+        airport.pop('dialer-proxy', None)
+        # Every selectable IPv4/domain node is chained through the pinned IPv6 anchor.
+        managed, groups = build_nodes(source, s, airport)
+    c['proxies'] = list(managed) + [{'name': NATIVE, 'type': 'direct', 'ip-version': 'ipv6'}]
     if s['campus_domains']:
         c['proxies'].append({'name': CAMPUS_DIRECT, 'type': 'direct', 'ip-version': 'ipv6-prefer'})
     if s['warp_enable']:
         c['proxies'].append({'name': WARP_PROXY, 'type': 'socks5', 'server': '127.0.0.1',
                              'port': int(s['socks_port']), 'udp': False})
-    # Every selectable IPv4/domain node is chained through the pinned IPv6 anchor.
+    if not groups:
+        # No airport: WARP is the only tunnel, native IPv6 stays the fallback.
+        members = ([WARP_PROXY] if s['warp_enable'] else []) + [NATIVE]
+        groups = [{'name': DEFAULT_GROUP, 'type': 'select', 'proxies': list(members)},
+                  {'name': AI_GROUP, 'type': 'select', 'proxies': list(members)}]
     c['proxy-groups'] = groups
     c.pop('proxy-providers', None)
     c['ipv6'] = True
@@ -289,9 +357,14 @@ def build_config(source, settings, standalone=False):
         # Gateways and SSO hosts must resolve to real internal addresses, including IPv4-only ones.
         dns['fake-ip-filter'] = list(dict.fromkeys(dns.get('fake-ip-filter', [])
             + ['+.' + domain for domain in s['campus_domains']]))
+    # Without an airport there is no UDP-capable IPv6 exit, so UDP falls back to REJECT
+    # instead of the default group (a socks5 WARP proxy is TCP-only here).
+    udp_exit = DEFAULT_GROUP if s['airport_ipv6'] else 'REJECT'
     rules = []
     # Exact outer endpoint exceptions precede any UDP rejection, including port 443.
-    outer = {parse_endpoint(e)[0] for e in s['endpoints']} | {s['airport_ipv6'], *STANDARD_V6_HOSTS}
+    outer = {parse_endpoint(e)[0] for e in s['endpoints']} | set(STANDARD_V6_HOSTS)
+    if s['airport_ipv6']:
+        outer.add(s['airport_ipv6'])
     for host in sorted(outer):
         rules.append(f'IP-CIDR6,{host}/128,DIRECT,no-resolve')
     for subnet in ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16']:
@@ -322,18 +395,19 @@ def build_config(source, settings, standalone=False):
     # IPv6 literal connections can remain native; fake IPv4 addresses do not match.
     rules.append(f'IP-CIDR6,2000::/3,{NATIVE},no-resolve')
     if s['warp_enable']:
-        warp_conds = ['DOMAIN-SUFFIX,' + d for d in s['warp_domains']]
-        warp_conds += ['PROCESS-NAME,' + p for p in s['warp_processes']]
-        for cond in dict.fromkeys(warp_conds):
-            dest = DEFAULT_GROUP if s['warp_udp'] == 'airport' else 'REJECT'
+        warp_conds = [('DOMAIN-SUFFIX,' + d, False) for d in s['warp_domains']]
+        warp_conds += [('PROCESS-NAME,' + p, False) for p in s['warp_processes']]
+        warp_conds += [('IP-CIDR,' + c, True) for c in s.get('warp_cidrs', [])]
+        for cond, no_resolve in dict.fromkeys(warp_conds):
+            dest = udp_exit if s['warp_udp'] == 'airport' else 'REJECT'
             rules.append(f'AND,(({cond}),(NETWORK,UDP)),{dest}')
-            rules.append(f'{cond},{WARP_PROXY}')
+            rules.append(f'{cond},{WARP_PROXY}' + (',no-resolve' if no_resolve else ''))
     for domain in s['native_domains']:
         # v1.18.6 Direct.ListenPacket does not enforce ip-version on UDP.
-        rules.append(f'AND,((DOMAIN-SUFFIX,{domain}),(NETWORK,UDP)),{DEFAULT_GROUP}')
+        rules.append(f'AND,((DOMAIN-SUFFIX,{domain}),(NETWORK,UDP)),{udp_exit}')
         rules.append(f'DOMAIN-SUFFIX,{domain},{NATIVE}')
     if s['native_cn']:
-        rules.append(f'AND,((GEOSITE,cn),(NETWORK,UDP)),{DEFAULT_GROUP}')
+        rules.append(f'AND,((GEOSITE,cn),(NETWORK,UDP)),{udp_exit}')
         rules.append(f'GEOSITE,cn,{NATIVE}')
     rules.append(f'MATCH,{DEFAULT_GROUP}')
     c['rules'] = rules

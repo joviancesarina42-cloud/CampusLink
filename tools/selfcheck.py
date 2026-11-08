@@ -55,11 +55,11 @@ def main():
     add('mihomo 内核', bool(found['kernel']),
         kernel_version(found['kernel']) if found['kernel'] else '未找到：放到 vendor/mihomo.exe 或填写内核路径')
     add('warpscout', bool(found['warp']),
-        found['warp'] or '未找到：只影响 IPv6 WARP 路径')
+        found['warp'] or '未找到：无法启用 WARP，只能走原生 IPv6')
     add('mihomo 配置', bool(found['source']),
         found['source'] or '未找到：放入 data/source.yaml 或填写配置来源')
     add('WARP 账户', bool(found['account']),
-        found['account'] or '未找到：WARP 将被关闭，其余路径不受影响')
+        found['account'] or '还没有账户：初始化时会自动注册')
     try:
         DATA.mkdir(parents=True, exist_ok=True)
         probe = DATA / '.selfcheck'

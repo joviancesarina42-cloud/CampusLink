@@ -19,6 +19,8 @@ def global_v6(host):
 
 
 def catalog(source, settings):
+    if not settings.get('airport_ipv6'):
+        return []  # 仅 WARP 模式：没有机场，就没有可选节点
     nodes = []
     seen = set()
     anchor_id = settings['airport_source_name']

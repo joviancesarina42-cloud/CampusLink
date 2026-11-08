@@ -22,7 +22,7 @@ def fixture():
     s.update(airport_source_name='JP-test', airport_source_host='entry.example',
              airport_ipv6='2001:4860:4860::8888',
              campus_domains=['example.edu.cn'],
-             warp_domains=['video.example'], warp_processes=['video.exe'])
+             warp_domains=['video.example'], warp_processes=['video.exe'], warp_cidrs=[])
     source = {'proxies': [{'name':'JP-test', 'type':'hysteria2','server':'entry.example',
                           'port':65000,'password':'test-only','sni':'tls.example'},
                          {'name':'Other','type':'ss','server':'1.2.3.4','port':443}],
@@ -42,9 +42,36 @@ class PolicyTests(unittest.TestCase):
         s,c=fixture();c['proxies'][0]['server']='changed.example'
         with self.assertRaisesRegex(ValueError,'未唯一命中'):build_config(c,s)
 
-    def test_unimported_settings_refuse_to_build(self):
-        s,c=fixture();s['airport_ipv6']=''
-        with self.assertRaisesRegex(ValueError,'还没有导入本机配置'):build_config(c,s)
+    def test_no_airport_and_no_warp_refuses_to_build(self):
+        s,c=fixture();s['airport_ipv6']='';s['warp_enable']=False
+        with self.assertRaisesRegex(ValueError,'至少需要其中之一'):build_config(c,s)
+
+    def test_warp_only_config_drops_anchor_and_uses_warp_as_default(self):
+        s,c=fixture()
+        s.update(airport_ipv6='', airport_source_name='', airport_source_host='')
+        cfg=build_config(c,s)
+        names=[p['name'] for p in cfg['proxies']]
+        self.assertNotIn('CL-机场IPv6',names)
+        self.assertFalse(any(n.startswith('CL-节点/') for n in names))
+        self.assertIn('CL-WARP',names)
+        groups={g['name']:g['proxies'] for g in cfg['proxy-groups']}
+        self.assertEqual(groups['CL-IPv6出口'][0],'CL-WARP')
+        self.assertEqual(groups['CL-AI服务'][0],'CL-WARP')
+        self.assertEqual(cfg['rules'][-1],'MATCH,CL-IPv6出口')
+
+    def test_warp_cidrs_follow_the_same_udp_policy(self):
+        s,c=fixture();s['warp_cidrs']=['111.33.0.0/16']
+        rules=build_config(c,s)['rules']
+        self.assertIn('AND,((IP-CIDR,111.33.0.0/16),(NETWORK,UDP)),REJECT',rules)
+        self.assertIn('IP-CIDR,111.33.0.0/16,CL-WARP,no-resolve',rules)
+        s,c=fixture();s['warp_cidrs']=['111.33.0.0/16'];s['warp_udp']='airport'
+        self.assertIn('AND,((IP-CIDR,111.33.0.0/16),(NETWORK,UDP)),CL-IPv6出口',build_config(c,s)['rules'])
+
+    def test_default_settings_ship_a_video_preset(self):
+        for name in ('bilibili.com','bilivideo.com','hdslb.com'):
+            self.assertIn(name, DEFAULTS['warp_domains'])
+        self.assertIn('哔哩哔哩.exe', DEFAULTS['warp_processes'])
+        self.assertEqual(DEFAULTS['warp_udp'],'block')
 
     def test_no_silent_ipv4_fallback(self):
         s,c=fixture();cfg=build_config(c,s)

@@ -17,7 +17,8 @@ import yaml
 from .api import Mihomo
 from .capture import Capture, physical_adapters
 from .common import CREATE_NO_WINDOW, DATA, VENDOR, atomic_write, is_admin, read_json, write_json
-from .config import Settings, build_config, discover, import_local, render, validate_kernel
+from .config import (Settings, build_config, discover, import_local, register_warp,
+                     render, validate_kernel)
 from .probe import check_trace
 from .system import enable_system_proxy, get_system_proxy, process_identity, set_system_proxy, terminate_identity
 from .traffic import DeltaTracker, Store, classify_connection, ip_family
@@ -59,12 +60,12 @@ class Manager:
     def source(self):
         path = DATA / 'source.yaml'
         if not path.exists():
-            raise RuntimeError('请先导入本机配置')
+            return {}
         stat = path.stat()
         key = (stat.st_mtime_ns, stat.st_size)
         with self.source_lock:
             if self.source_cache is None or self.source_cache[0] != key:
-                self.source_cache = (key, yaml.safe_load(path.read_text('utf-8-sig')))
+                self.source_cache = (key, yaml.safe_load(path.read_text('utf-8-sig')) or {})
             return self.source_cache[1]
 
     def client(self, existing=False):
@@ -87,10 +88,24 @@ class Manager:
         if self.state['phase'] in ('running', 'starting', 'recovery'):
             raise RuntimeError('请先停止并回滚，再重新导入配置')
         result = import_local(self.settings)
-        detail = '已导入本机 IPv6 节点与独立内核'
-        detail += '、WARP 账户' if result.get('warp') else '（未找到 WARP 账户，WARP 已关闭）'
-        self.store.event('config', detail)
+        parts = []
+        parts.append('机场：' + result['airport'] if result['airport'] else '机场：未配置，仅用 WARP')
+        parts.append('WARP：' + ('已就绪' if result['warp'] else '未启用'))
+        detail = '；'.join(parts)
+        if result.get('notes'):
+            detail += '（' + '；'.join(result['notes']) + '）'
+        self.store.event('config', '已初始化本机依赖：' + detail)
         return result
+
+    def register_warp_account(self):
+        if self.state['phase'] in ('running', 'starting', 'recovery'):
+            raise RuntimeError('请先停止并回滚，再注册 WARP 账户')
+        path = register_warp(self.settings)
+        value = copy.deepcopy(self.settings.value)
+        value['warp_enable'] = True
+        self.settings.save(value)
+        self.store.event('config', '已注册 WARP 账户')
+        return {'message': 'WARP 账户已就绪', 'account': path}
 
     def preview(self):
         cfg = build_config(self.source(), self.settings.value, self.settings.value['mode'] == 'standalone')
@@ -163,7 +178,7 @@ class Manager:
         if self.state['phase'] != 'running':
             raise RuntimeError('请先开启链路，再验证两个策略组的出口')
         cfg = self.active_config
-        port = self.settings.value['mixed_port'] if self.settings.value['mode'] == 'standalone' else cfg.get('mixed-port', 7897)
+        port = self.settings.value['mixed_port'] if self.settings.value['mode'] == 'standalone' else cfg.get('mixed-port') or self.settings.value['mixed_port']
         result = {'default': check_trace(port), 'ai': check_trace(port, host='one.one.one.one')}
         self.state['node_health'] = result
         self.state['health'] = result['default']
@@ -263,6 +278,11 @@ class Manager:
         if self.journal:
             raise RuntimeError('检测到未完成的恢复记录，请先点击“恢复上次现场”')
         s = copy.deepcopy(self.settings.value)
+        if s['warp_enable'] and not discover(s).get('account'):
+            try:
+                register_warp(self.settings)
+            except Exception as error:
+                raise RuntimeError(f'{error}；也可以先关闭 WARP 再开启链路') from error
         if s['mode'] == 'standalone' and s['tun'] and not is_admin():
             raise RuntimeError('独立 TUN 模式需要管理员权限：请以管理员身份重新运行本程序')
         if s['mode'] == 'standalone':
@@ -600,9 +620,15 @@ class Manager:
                 s = self.settings.value
                 running = self.state['phase'] == 'running'
                 cfg = self.active_config or self.source()
+                if not running and not cfg:
+                    # Nothing is configured yet: do not probe a port this tool does not own.
+                    self.state['health'] = {}
+                    self.state['existing_warp_health'] = {}
+                    self.stop_event.wait(s['check_seconds'])
+                    continue
                 warp = next((p for p in cfg.get('proxies', []) if p.get('type') == 'socks5'
                             and p.get('server') in ('127.0.0.1', '::1')), None)
-                port = s['mixed_port'] if running and s['mode'] == 'standalone' else cfg.get('mixed-port', 7897)
+                port = s['mixed_port'] if running and s['mode'] == 'standalone' else cfg.get('mixed-port') or s['mixed_port']
                 health = check_trace(port)
                 if running:
                     ai_health = check_trace(port, host='one.one.one.one')
