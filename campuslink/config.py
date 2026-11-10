@@ -4,7 +4,6 @@ import copy
 import ipaddress
 import os
 import shutil
-import socket
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -12,6 +11,7 @@ import yaml
 
 from .common import DATA, ROOT, VENDOR, atomic_write, read_json, write_json, run
 from .nodes import AI_GROUP, ANCHOR, build_nodes
+from .entries import pin_entry, remap_selections, select_entry, v6_entry
 
 WARP_PROXY = 'CL-WARP'
 NATIVE = 'CL-原生IPv6'
@@ -167,7 +167,7 @@ def discover(settings=None):
     runtime = first_file([os.environ.get('CAMPUSLINK_RUNTIME'),
                           *[d / 'clash-verge.yaml' for d in dirs]])
     source = first_file([s.get('source_config'), os.environ.get('CAMPUSLINK_SOURCE'),
-                         DATA / 'source.yaml', runtime])
+                         runtime, DATA / 'source.yaml'])
     # warpscout writes its account next to the binary by default.
     warp_dir = Path(warp).parent if warp else None
     account = first_file([s.get('warp_account'), DATA / 'warp-account.json',
@@ -192,34 +192,6 @@ def _copy_if_missing(src, dest):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, dest)
     return True
-
-
-def v6_entry(server):
-    """Global IPv6 address for a node server: literal, or one AAAA answer.
-
-    Subscriptions often write the airport entry as a hostname that keeps an
-    AAAA record. Pinning the address at import time keeps the first hop on
-    IPv6 without re-resolving it at runtime.
-    """
-    server = str(server or '').strip()
-    if not server:
-        return ''
-    if is_global_v6(server):
-        return server
-    try:
-        ipaddress.ip_address(server)
-        return ''  # a literal, but not a global IPv6 one
-    except ValueError:
-        pass
-    try:
-        answers = socket.getaddrinfo(server, None, socket.AF_INET6)
-    except OSError:
-        return ''
-    for info in answers:
-        address = info[4][0]
-        if is_global_v6(address):
-            return address
-    return ''
 
 
 def register_warp(settings, fresh=False):
@@ -275,18 +247,13 @@ def import_local(settings: Settings):
             c = yaml.safe_load(imported)
         except yaml.YAMLError:
             c = None
-        candidates = []
-        for proxy in (c or {}).get('proxies', []):
-            if not isinstance(proxy, dict) or proxy.get('type') in ('direct', 'socks5'):
-                continue
-            address = v6_entry(proxy.get('server', ''))
-            if address:
-                candidates.append((proxy, address))
-        if candidates:
-            selected, address = next(((p, a) for p, a in candidates if a == value['airport_ipv6']), candidates[0])
+        selected, address = select_entry(c or {}, value)
+        if selected is not None:
             value['airport_source_name'] = selected['name']
             value['airport_source_host'] = selected['server']  # 原始域名，供命中校验
             value['airport_ipv6'] = address                     # 解析出的 IPv6 字面量，运行时用它
+            remap_selections(c, value)
+            build_config(c, value)
             if address != selected['server']:
                 notes.append('机场入口按域名解析为 IPv6：' + address)
             airport = selected['name']
@@ -312,6 +279,8 @@ def import_local(settings: Settings):
             atomic_write(DATA / 'source.yaml', imported)
             used_source = str(source_path) if source_path else str(DATA / 'source.yaml')
         else:
+            if value.get('airport_source_name'):
+                raise RuntimeError('没有发现可用的公网 IPv6 机场入口；请检查入口域名的 AAAA 记录与本机 DNS，已保留原配置')
             value.update(airport_ipv6='', airport_source_name='', airport_source_host='')
             notes.append('机场配置里没有公网 IPv6 入口，按“仅 WARP”模式运行')
     else:
@@ -361,7 +330,8 @@ def build_config(source, settings, standalone=False):
         airport = copy.deepcopy(matches[0])
         if airport.get('type') not in ('hysteria2', 'tuic', 'ss', 'vmess', 'vless', 'trojan', 'hysteria', 'wireguard'):
             raise ValueError('来源节点协议未验收，不能保证其 IPv6 出站')
-        airport.update(name=ANCHOR, server=s['airport_ipv6'])
+        pin_entry(airport, s['airport_ipv6'])
+        airport['name'] = ANCHOR
         airport.pop('dialer-proxy', None)
         # Every selectable IPv4/domain node is chained through the pinned IPv6 anchor.
         managed, groups = build_nodes(source, s, airport)

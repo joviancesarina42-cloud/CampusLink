@@ -188,12 +188,12 @@ class V6EntryTests(unittest.TestCase):
     def test_hostname_is_pinned_to_its_global_aaaa(self):
         from campuslink import config
         answer = [(socket.AF_INET6, socket.SOCK_STREAM, 6, '', ('2407:cdc0::1', 0, 0, 0))]
-        with patch('campuslink.config.socket.getaddrinfo', return_value=answer):
+        with patch('campuslink.entries.socket.getaddrinfo', return_value=answer):
             self.assertEqual(config.v6_entry('entry.example'), '2407:cdc0::1')
 
     def test_hostname_without_aaaa_is_not_an_entry(self):
         from campuslink import config
-        with patch('campuslink.config.socket.getaddrinfo', side_effect=socket.gaierror):
+        with patch('campuslink.entries.socket.getaddrinfo', side_effect=socket.gaierror):
             self.assertEqual(config.v6_entry('entry.example'), '')
 
 
