@@ -59,7 +59,7 @@ function fillForm(s){
   $('capture_interfaces').value=(s.capture_interfaces||[]).join(', ');
   exceptions=structuredClone(s.exceptions||[]);
   renderExceptions();
-  $('airport-source').textContent=s.airport_source_name?('IPv6 首跳节点：'+s.airport_source_name):'未设置';
+  $('airport-source').textContent=s.airport_source_name?('IPv6 首跳节点：'+s.airport_source_name):'';
   formLoaded=true;
 }
 function formValues(){
@@ -81,7 +81,7 @@ function renderNodes(){
   if(key!==nodeCatalogKey){
     for(const role of ['ai','default']){
       const current=nodeDirty?$('node-'+role).value:info.selected[role];
-      const empty=noNodes?'未配置机场':'原选择不存在，请重新选择';
+      const empty=noNodes?'未配置 VPN':'原选择不存在，请重新选择';
       $('node-'+role).innerHTML=(!nodes.some(n=>n.id===current)?`<option value="" disabled selected>${empty}</option>`:'')+nodes.map(n=>`<option value="${esc(n.id)}">${esc(n.name)} · ${n.path==='direct6'?'IPv6 直连':'经 IPv6 首跳中转'}</option>`).join('');
       if(nodes.some(n=>n.id===current))$('node-'+role).value=current;
     }
@@ -90,7 +90,7 @@ function renderNodes(){
   if(!nodeDirty){for(const role of ['ai','default'])$('node-'+role).value=nodes.some(n=>n.id===info.selected[role])?info.selected[role]:'';}
   for(const role of ['ai','default']){
     if(noNodes){
-      $('node-'+role+'-route').textContent=info.error||'未配置机场，只走 WARP 与原生 IPv6';
+      $('node-'+role+'-route').textContent=info.error||'未配置 VPN，只走 WARP 与原生 IPv6';
       $('node-'+role+'-status').textContent='未使用';$('node-'+role+'-status').className='pill muted';
       $('node-'+role+'-health').textContent='';
       continue;
@@ -105,7 +105,7 @@ function renderNodes(){
   const busy=!!snapshot.state.operation;
   $('nodes-apply').disabled=busy||!nodes.length||!$('node-ai').value||!$('node-default').value;
   $('nodes-probe').disabled=busy||snapshot.state.phase!=='running';
-  $('nodes-selection-state').textContent=nodeDirty?'选择尚未应用':snapshot.state.phase==='running'?'当前选择已应用于新连接':'当前选择已保存，开启链路后生效';
+  $('nodes-selection-state').textContent=nodeDirty?'未应用':snapshot.state.phase==='running'?'已应用':'已保存';
   $('ai-rule-count').textContent=`${info.ai_rule_count||0} 条域名规则`;
   const coverage=$('ai-coverage');coverage.textContent=noNodes?'':`AI 进程：${(snapshot.settings.ai_processes||[]).join('、')}`;coverage.closest('.panel').classList.toggle('hidden',!coverage.textContent);
 }
@@ -124,13 +124,14 @@ function chart(){
   if(!snapshot||!$('overview').classList.contains('active'))return;
   const c=$('chart'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=190;
   if(!w)return;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);
-  const data=snapshot.history||[],left=59,right=w-8,top=12,bottom=h-23;
+  const data=snapshot.history||[],left=68,right=w-8,top=12,bottom=h-23;
   const maximum=Math.max(1024,...data.map(x=>Math.max(x.ipv4,x.ipv6)))*1.15;
-  ctx.font='9px Segoe UI';ctx.textAlign='right';ctx.fillStyle='#a5b3bb';ctx.lineWidth=1;
+  ctx.font='11px "Microsoft YaHei UI",Segoe UI';ctx.textAlign='right';ctx.fillStyle='#a5b3bb';ctx.lineWidth=1;
   for(let i=0;i<4;i++){const y=top+(bottom-top)*i/3;ctx.beginPath();ctx.strokeStyle='#edf2f4';ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.fillText(bytes(maximum*(1-i/3))+'/s',left-7,y+3);}
   const points=(key)=>data.map((v,i)=>[left+(right-left)*i/Math.max(89,data.length-1),bottom-(bottom-top)*(v[key]||0)/maximum]);
   for(const [key,color]of[['ipv6','#08a985'],['ipv4','#cf9e49']]){const p=points(key);if(!p.length)continue;ctx.beginPath();ctx.moveTo(p[0][0],bottom);p.forEach(([x,y])=>ctx.lineTo(x,y));ctx.lineTo(p.at(-1)[0],bottom);ctx.closePath();const gradient=ctx.createLinearGradient(0,top,0,bottom);gradient.addColorStop(0,color+'30');gradient.addColorStop(1,color+'04');ctx.fillStyle=gradient;ctx.fill();ctx.beginPath();p.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();}
-  ctx.fillStyle='#a5b3bb';ctx.textAlign='left';ctx.fillText('90 次采样前',left,h-5);ctx.textAlign='right';ctx.fillText('现在',right,h-5);
+  if(!data.length||!data.some(x=>x.ipv4||x.ipv6)){ctx.fillStyle='#a1aeb6';ctx.font='12px "Microsoft YaHei UI",Segoe UI';ctx.textAlign='center';ctx.fillText('暂无流量',(left+right)/2,(top+bottom)/2);ctx.textAlign='left';}
+  ctx.fillStyle='#a5b3bb';ctx.textAlign='left';ctx.fillText('90 次采样前',left,h-4);ctx.textAlign='right';ctx.fillText('现在',right,h-5);
 }
 function render(){
   const d=snapshot,s=d.state,c=d.capture;
@@ -147,7 +148,7 @@ function render(){
   $('recover').disabled=busy||!['running','recovery'].includes(s.phase);
   $('online').textContent=s.api_online?'内核在线':'内核未连接';$('online').className='pill '+(s.api_online?'green':'muted');
   $('clock').textContent=new Date().toLocaleTimeString('zh-CN',{hour12:false});
-  const phases={idle:['工具就绪',''],running:['IPv6 链路已开启',`${s.mode==='standalone'?'独立内核运行':'接管现有内核'} · 原生 IPv6 / WARP / IPv6 机场并行`],starting:['正在开启',''],stopping:['正在恢复网络',''],recovery:['上次恢复未完成','']};
+  const phases={idle:['工具就绪',''],running:['IPv6 链路已开启',`${s.mode==='standalone'?'独立内核运行':'接管现有内核'} · 原生 IPv6 / WARP / VPN 并行`],starting:['正在开启',''],stopping:['正在恢复网络',''],recovery:['上次恢复未完成','']};
   const p=phases[s.phase]||phases.idle;$('phase-title').textContent=p[0];$('phase-description').textContent=p[1];
   const warning=[s.error,s.capture_error,s.storage_error,c.error,s.api_online?'':s.api_error].filter(Boolean).join('\n');
   $('error-banner').textContent=brief(warning);$('error-banner').classList.toggle('hidden',!warning);
@@ -175,8 +176,8 @@ function render(){
   if(!formLoaded)fillForm(d.settings);
   $('recovery-label').textContent=s.phase==='recovery'?'上次现场尚待恢复':s.phase==='running'?'已有开启前的完整回滚点':'没有待恢复的网络变更';
   if(activePage==='activity'){
-    $('diagnostics').innerHTML=[['运行权限',s.admin?'管理员':'普通用户'],['本次采样会话',d.session],['最后连接采样',s.sample_time?new Date(s.sample_time*1000).toLocaleTimeString('zh-CN'):'尚无成功采样'],['物理监控',c.running?'运行中':'已暂停'],['物理网卡',(c.interfaces||[]).map(x=>x.Name).join(' / ')||'尚未获取'],['驱动报告丢包',c.dropped],['配置自动重载',s.watchdog_restores+' 次']].map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
-    $('events').innerHTML=d.events.length?d.events.map(e=>`<div class="event"><time>${esc(new Date(e.time*1000).toLocaleString('zh-CN',{hour12:false}))}</time><span class="event-kind">${esc(e.kind)}</span><span>${esc(e.message)}</span></div>`).join(''):'<div class="empty">暂无操作记录</div>';
+    $('diagnostics').innerHTML=[['运行权限',s.admin?'管理员':'普通用户'],['本次采样会话',d.session?String(d.session).slice(0,8):'—'],['最后连接采样',s.sample_time?new Date(s.sample_time*1000).toLocaleTimeString('zh-CN'):'尚无成功采样'],['物理监控',c.running?'运行中':'已暂停'],['物理网卡',(c.interfaces||[]).map(x=>x.Name).join(' / ')||'尚未获取'],['驱动报告丢包',c.dropped],['配置自动重载',s.watchdog_restores+' 次']].map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+    $('events').innerHTML=d.events.length?d.events.map(e=>`<div class="event"><time>${esc(new Date(e.time*1000).toLocaleString('zh-CN',{hour12:false}))}</time><span class="event-kind">${esc(e.kind)}</span><span title="${esc(e.message)}">${esc(e.message)}</span></div>`).join(''):'<div class="empty">暂无操作记录</div>';
   }
   if(activePage==='traffic')renderTable();
   if(activePage==='overview')chart();
@@ -186,10 +187,10 @@ function render(){
     $('notice').classList.add('hidden');
     if(error)toast(error);
     else if(name==='preview'){$('preview-content').textContent=JSON.stringify(result,null,2);$('preview-panel').classList.remove('hidden');$('preview-panel').scrollIntoView({behavior:'smooth',block:'start'});toast('校验通过');}
-    else if(name==='import'){formLoaded=false;const parts=[result.airport?'机场 '+result.airport:'仅 WARP'];parts.push(result.warp?'WARP 就绪':'WARP 未启用');if(result.notes&&result.notes.length)parts.push(result.notes.join('；'));toast(parts.join(' · '));}
+    else if(name==='import'){formLoaded=false;const parts=[result.airport?'VPN '+result.airport:'仅 WARP'];parts.push(result.warp?'WARP 就绪':'WARP 未启用');if(result.notes&&result.notes.length)parts.push(result.notes.join('；'));toast(parts.join(' · '));}
     else if(name==='warp-register'){formLoaded=false;toast(result.message);}
-    else if(name==='deps-install'){formLoaded=false;const parts=[result.downloaded&&result.downloaded.length?'下载 '+result.downloaded.join('、'):'依赖已齐全'];parts.push(result.airport?'机场 '+result.airport:'仅 WARP');parts.push(result.warp?'WARP 就绪':'WARP 未启用');toast(parts.join(' · '));}
-    else if(name==='probe'){toast(`机场 HTTPS：${result.airport.ok?'通过':result.airport.error}\nWARP HTTPS：${result.warp.ok?'通过':result.warp.error}`);}
+    else if(name==='deps-install'){formLoaded=false;const parts=[result.downloaded&&result.downloaded.length?'下载 '+result.downloaded.join('、'):'依赖已齐全'];parts.push(result.airport?'VPN '+result.airport:'仅 WARP');parts.push(result.warp?'WARP 就绪':'WARP 未启用');toast(parts.join(' · '));}
+    else if(name==='probe'){toast(`VPN HTTPS：${result.airport.ok?'通过':result.airport.error}\nWARP HTTPS：${result.warp.ok?'通过':result.warp.error}`);}
     else if(name==='nodes-select'){nodeDirty=false;renderNodes();toast(result.message);}
     else if(name==='nodes-probe'){toast(['ai','default'].map(k=>`${k==='ai'?'AI 服务':'默认出口'}：${result.health[k].ok?(result.health[k].loc+' / '+result.health[k].ip):result.health[k].error}`).join('\n'));}
     else{toast(result?.message||'操作完成');if(name==='save')formLoaded=false;}

@@ -24,3 +24,86 @@ th{white-space:nowrap}
 th:nth-child(5),th:nth-child(6){width:11%}
 /* 英文单词不要被硬切（IEPL 曾被拆成 IEP + L） */
 td{word-break:normal;overflow-wrap:anywhere}
+/* ── 侧栏：去掉分组标题，图标改线性 SVG ── */
+nav{margin-top:26px}
+nav button{display:flex;align-items:center;gap:11px;padding:10px 13px;font-size:13px}
+nav button svg{width:17px;height:17px;flex:0 0 17px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+nav button.active svg{opacity:1}
+.brand{font-size:20px}
+
+/* ── 两张主卡要压得住另外两张 ── */
+.metric.green{background:#f2faf6;border-color:#cfe6dc;border-top:3px solid #0aab87}
+.metric.amber{background:#fdf9f0;border-color:#efdfc2;border-top:3px solid #d5a043}
+.metric.green>div,.metric.amber>div{font-weight:600;color:#46665e}
+.metric.green strong{font-size:30px;color:#00795f}
+.metric.amber strong{font-size:30px;color:#a2701f}
+
+/* ── 密度：把面板、栅格、表单的空白收回来 ── */
+main{padding:24px 28px 14px}
+header{margin-bottom:17px}
+h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+header p{margin:0}
+.panel{padding:17px 19px;margin-bottom:13px;border-radius:9px}
+.panel-head{margin-bottom:12px}
+.metrics{gap:12px;margin-bottom:14px}
+.metric{padding:14px 16px;border-radius:9px}
+.metric strong{font-size:26px;margin:7px 0 4px}
+.metric p{margin:0}
+.two-col{gap:14px}
+.settings-grid{gap:15px}
+.section-top{margin:15px 0 10px}
+label{margin:12px 0 5px}
+.field-help{margin:6px 0}
+.form-actions{margin-top:16px}
+.node-card{padding:16px;border-radius:8px}
+.node-grid{gap:14px}
+.node-route{margin-top:11px;padding:11px}
+.link-row{padding:10px 0}
+.business-summary{gap:12px}
+.biz-item strong{font-size:19px;margin-top:5px}
+.recovery-box{padding:15px;margin:13px 0}
+dl{row-gap:9px}
+.event{padding:9px 0}
+.toolbar{margin-bottom:13px}
+.table-footer{margin-top:10px}
+td{padding:10px 10px}
+th{padding:9px 10px}
+.hero{margin-bottom:13px}
+.chart-foot{margin-top:6px}
+.side-note{padding:12px 10px 6px}
+/* 禁用态要做得出来"不可用"，而不是看不见 */
+button:disabled{opacity:1;background:#eef2f5;color:#9baab3;border-color:#e1e8ec;cursor:not-allowed}
+.primary:disabled{background:#e7edf0;color:#93a3ac;border-color:#dde5e9}
+.primary:not(:disabled):hover{background:#00745e}
+/* 辅助文字抬到可读线：9~10px 在 125% 缩放下会糊成一团 */
+nav button{font-size:14px}
+.brand{font-size:21px}
+.legend{font-size:11px;gap:13px}
+.pill{font-size:11px;padding:3px 8px}
+.metric p{font-size:11px}
+.field-help{font-size:11.5px}
+.explain{font-size:11.5px}
+.link-row p{font-size:11px}
+table{font-size:12px}
+th{font-size:11.5px}
+td small{font-size:10.5px}
+.biz-item span{font-size:11px}
+.biz-item small{font-size:10.5px}
+.chart-foot{font-size:11px}
+.table-footer{font-size:11px}
+.event{font-size:11.5px}
+dl{font-size:11.5px}
+.node-card-head p{font-size:11px}
+.node-card-head strong{font-size:13.5px}
+/* 禁用态压出对比 */
+button:disabled{background:#e2e9ed;color:#8496a0;border-color:#d8e1e6}
+.primary:disabled{background:#dfe7eb;color:#8a9aa4;border-color:#d6e0e5}
+/* 侧栏收窄，别让导航项右边空一条 */
+@media(min-width:761px){aside{width:176px}main{margin-left:176px}}
+/* 末轮微调 */
+button:disabled{background:#d6dfe4;color:#75898f;border-color:#cbd7dd}
+.primary:disabled{background:#d3dde2;color:#7b8d97;border-color:#c9d6dc}
+.recovery-box{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.recovery-box strong{font-size:12.5px;font-weight:600}
+.event span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td{padding:9px 10px}
