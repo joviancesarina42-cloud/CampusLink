@@ -1,23 +1,34 @@
-CampusLink �� ��ѹ���ȿ�����
+﻿CampusLink 使用说明
 
-һ���Ƽ����裨������ȫ�����ְ�ȫ��ʾ��
-1. ��Ҫֱ��˫�� zip ����ļ������Ҽ� zip �� ���� �� ��ѡ����������� �� ȷ����
-2. �ٽ�ѹ�������ļ��С�
-3. ˫�������� CampusLink.cmd������ CampusLink.exe�����״��������������ԱȨ�ޣ���ΪҪ�ӹ� TUN ��ϵͳ������
+一、首次下载
+先右键 CampusLink-windows-x64.zip → 属性 → 勾选“解除锁定”→ 应用，再完整解压。
+然后双击“启动 CampusLink.cmd”。管理员权限窗口请选择“是”；接管 TUN 需要此权限。
+请勿在压缩包预览窗口内运行程序。
 
-��������Ѿ���ѹ��˫�� exe �� SmartScreen ��ס
-   ������㡰������Ϣ��������Ҫ���С���
-   ����˫�������� CampusLink.cmd���������Ƚ������Ŀ¼�� Internet �����������
+二、已解压，双击 CMD 仍显示“Windows 已保护你的电脑”
+CMD 也会被 SmartScreen 检查，被拦住时里面的修复代码根本没有执行。
+请在解压后的 CampusLink 文件夹空白处按住 Shift 点击右键，选择“在此处打开 PowerShell 窗口”
+（Windows 11 可选“在终端中打开”，切到 PowerShell）。复制下面一整行并回车：
 
-����Ϊʲô���������ʾ
-   exe û�������ǩ��֤�飬Windows �ԡ���Դδ֪���������١��ĳ���һ������һ�¡�
-   �������Զ����£��� data Ŀ¼�ⲻд�κ�λ�ã�Դ��ȫ�������������Լ����롣
+Get-ChildItem -LiteralPath . -File | Unblock-File; powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\repair-start.ps1
 
-�ġ���������
-   data    ����ƾ�ݡ����Ŀ��ա������⡢�ع���
-   vendor  �ں��� warpscout
-   ������Ŀ¼����汾�⣬������ʱһ����ߡ�
+这会解除本目录程序的下载标记，再请求管理员权限并启动。
+终端的当前目录必须包含 CampusLink.exe 和 repair-start.ps1。
+此操作不会关闭 SmartScreen、Defender 或 UAC，也不会修改系统执行策略。
+修复失败会显示具体错误；请保留错误文字。
 
-�塢У�������Ƿ�����
-   certutil -hashfile CampusLink-windows-x64.zip SHA256
-   �ͷ���ҳ������ֵ��һ�¡�
+三、其他提示
+“是否允许此应用对你的设备进行更改”是管理员权限请求，不是 SmartScreen 拦截。
+本包尚未进行可信代码签名，不能保证在所有 Windows 策略下免拦截。
+如果解除下载标记后仍被 Smart App Control 或单位策略阻止，请使用源码运行，或联系管理员。
+如果 exe 消失，请先检查 Windows 安全中心的保护历史记录；不要直接关闭防护。
+新的下载包仍需先解除 zip 锁定；当前目录修复不会让未来下载的包自动获得信任。
+
+四、数据
+ data    账户凭据、订阅快照、数据库、回滚点
+ vendor  内核与 warpscout
+这些目录不进入版本库，升级时请保留。
+
+五、校验压缩包
+certutil -hashfile CampusLink-windows-x64.zip SHA256
+与发布页提供的 SHA256SUMS.txt 对照。

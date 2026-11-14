@@ -27,13 +27,18 @@ try {
         New-Item -ItemType Directory -Force -Path $package | Out-Null
         Get-ChildItem -LiteralPath $desktop -File | Copy-Item -Destination $package -Force
     }
-    # 解压说明与启动器：先解除 Internet 标记，绕开未签名 exe 的拦截。
+    # CMD 自身也可能被 SmartScreen 拦截；说明中提供从系统终端执行的修复入口。
     $extra = Join-Path $root 'packaging'
     $target = Join-Path $root 'dist\CampusLink'
     if (Test-Path -LiteralPath $extra) {
         Get-ChildItem -LiteralPath $extra -File | Copy-Item -Destination $target -Force
     }
-    $lines = foreach ($name in @('CampusLink.exe', '启动 CampusLink.cmd', '使用说明.txt')) {
+    foreach ($name in @('启动 CampusLink.cmd', 'repair-start.ps1', '使用说明.txt')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $target $name) -PathType Leaf)) {
+            throw ('发布包缺少启动文件：' + $name)
+        }
+    }
+    $lines = foreach ($name in @('CampusLink.exe', '启动 CampusLink.cmd', 'repair-start.ps1', '使用说明.txt')) {
         $path = Join-Path $target $name
         if (Test-Path -LiteralPath $path) {
             '{0}  {1}' -f (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLower(), $name

@@ -40,7 +40,17 @@
 
 **方式一：发布版（推荐）**
 
-下载 Releases 里的 `CampusLink-windows-x64.zip`，**先右键 zip → 属性 → 勾选「解除锁定」**，再解压到任意目录，双击 `启动 CampusLink.cmd`。首次启动会请求管理员权限，因为它要接管 TUN 和系统代理。看不到解压后的 exe 文件可能是被电脑杀毒软件删除，但工具本身是安全可用的。
+下载 Releases 里的 `CampusLink-windows-x64.zip`，**先右键 zip → 属性 → 勾选「解除锁定」→ 应用**，再完整解压，双击 `启动 CampusLink.cmd`。启动会请求管理员权限，因为它要接管 TUN 和系统代理。看不到解压后的 exe 文件时，先检查 Windows 安全中心的保护历史记录。
+
+**已解压，双击 CMD 仍显示「Windows 已保护你的电脑」？** CMD 本身也可能被 SmartScreen 拦截，里面的解除锁定代码此时没有机会执行。在解压后的 `CampusLink` 文件夹打开 PowerShell（当前目录内应有 `CampusLink.exe`），粘贴以下整行：
+
+```powershell
+Get-ChildItem -LiteralPath . -File | Unblock-File; powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\repair-start.ps1
+```
+
+修复入口会解除程序及依赖文件的下载标记并检查结果，然后请求管理员权限启动；失败会显示错误，取消权限请求也会明确提示。`data` 中的账户、订阅和回滚点不会被修改。仅修复、不启动时，给上述命令末尾加上 `-RepairOnly`。
+
+本发布包尚未进行可信代码签名，不能保证所有 Windows 策略下免拦截。解除下载标记不等于获得签名或信誉；如果 Smart App Control 或单位策略仍阻止运行，可使用源码方式或联系管理员。管理员权限窗口「是否允许此应用对你的设备进行更改」是正常 UAC 请求。详见 [Microsoft SmartScreen 说明](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)。
 
 **方式二：源码运行**
 

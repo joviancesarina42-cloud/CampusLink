@@ -1,16 +1,16 @@
 @echo off
-chcp 936 >nul
-setlocal
-cd /d "%~dp0"
-if not exist "CampusLink.exe" (
-  echo.
-  echo 找不到 CampusLink.exe。请把本文件放在解压后的目录里再运行。
-  echo.
+setlocal DisableDelayedExpansion
+set "CAMPUSLINK_HOME=%~dp0"
+if not exist "%CAMPUSLINK_HOME%repair-start.ps1" (
+  echo Missing repair-start.ps1. Extract the complete CampusLink package first.
   pause
   exit /b 1
 )
-echo 正在解除本目录下所有文件的“来自 Internet”标记…
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -LiteralPath '%~dp0' -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue"
-echo 启动 CampusLink…
-start "" "CampusLink.exe"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "& (Join-Path $env:CAMPUSLINK_HOME 'repair-start.ps1')"
+if errorlevel 1 (
+  echo.
+  echo CampusLink did not start. Read the error above or see the instructions file.
+  pause
+  exit /b 1
+)
 exit /b 0

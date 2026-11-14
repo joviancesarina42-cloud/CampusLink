@@ -2,5 +2,5 @@
 *.ps1 text eol=crlf
 *.png binary
 *.exe binary
-# 启动器与说明是 GBK 编码，按二进制原样保存
-packaging/* -text
+# CMD 使用 ASCII；PowerShell 与说明使用 UTF-8 BOM（兼容 Windows PowerShell 5.1）。
+packaging/* text eol=crlf
