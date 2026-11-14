@@ -60,7 +60,7 @@ namespace CampusLinkDesktop
             root = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar)).FullName;
             Text = "CampusLink · IPv6 链路工具";
             StartPosition = FormStartPosition.CenterScreen;
-            Size = new Size(1380, 940);
+            Size = new Size(1446, 900);
             MinimumSize = new Size(900, 640);
             BackColor = Color.FromArgb(243, 246, 248);
             AutoScaleMode = AutoScaleMode.Dpi;

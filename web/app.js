@@ -19,7 +19,7 @@ const checkFields=['native_cn','warp_enable','tun','auto_capture'];
 
 function bytes(n){
   n=Number(n)||0;
-  const units=['B','KiB','MiB','GiB','TiB'];let i=0;
+  const units=['B','KB','MB','GB','TB'];let i=0;
   while(n>=1024&&i<4){n/=1024;i++;}
   return `${n.toLocaleString('zh-CN',{maximumFractionDigits:i?2:0})} ${units[i]}`;
 }
