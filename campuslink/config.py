@@ -194,12 +194,12 @@ def _copy_if_missing(src, dest):
     return True
 
 
-def register_warp(settings, fresh=False):
+def register_warp(settings, fresh=False, target=None):
     """Create a WARP account with warpscout. IPv6 pools first, plain as fallback."""
     d = discover(settings.value)
     if not d['warp']:
         raise RuntimeError('没有找到 warpscout：把它放到 vendor/warpscout.exe 或填写路径')
-    target = DATA / 'warp-account.json'
+    target = Path(target) if target is not None else DATA / 'warp-account.json'
     target.parent.mkdir(parents=True, exist_ok=True)
     binary = Path(d['warp'])
     base = [str(binary), 'register', '-a', str(target)] + (['-fresh'] if fresh else [])

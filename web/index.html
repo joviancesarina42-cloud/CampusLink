@@ -46,7 +46,7 @@
   <label>配置来源（完整 mihomo YAML）<input id="source_config" spellcheck="false" placeholder="留空则自动查找 Clash Verge 运行时配置"></label>
   <label>mihomo 内核<input id="kernel_path" spellcheck="false" placeholder="留空则在 vendor、PATH 与 Clash Verge 目录中查找"></label>
   <label>warpscout<input id="warp_path" spellcheck="false"></label></details>
-  <div class="form-actions"><button id="save" type="submit" class="primary">保存配置</button><button id="preview" type="button" class="outline">校验并查看覆盖内容</button><button id="deps-install" type="button" class="outline">下载内核与 warpscout</button></div></form></article>
+  <div class="form-actions"><button id="save" type="submit" class="primary">保存配置</button><button id="preview" type="button" class="outline">校验并查看覆盖内容</button><button id="deps-install" type="button" class="outline">下载内核与 warpscout</button><button id="deps-cancel" type="button" class="outline hidden">停止下载</button></div></form></article>
   <div><article class="panel"><div class="panel-head"><h3>校园网站直连</h3><span class="pill amber">允许 IPv4</span></div>
   <p class="field-help">这些域名及其子域名直接连接校园网络，优先 IPv6，没有可用 IPv6 时允许 IPv4，不经过 WARP 或 VPN。</p>
   <label>直连域名（一行一个，不含 https:// 或路径）<textarea id="campus_domains" rows="3" spellcheck="false" placeholder="portal.example.edu.cn&#10;ipgw.example.edu.cn"></textarea></label>

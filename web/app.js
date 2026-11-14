@@ -38,8 +38,9 @@ async function action(name,body={}){
     const result=await response.json();
     if(!response.ok)throw Error(result.error||'操作失败');
     job={id:result.job,name};
-    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在恢复原配置、原 TUN 与系统代理…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在准备内核与 WARP 账户…','warp-register':'正在注册 WARP 账户…','deps-install':'正在从 GitHub 下载内核与 warpscout…',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
+    $('notice').textContent=({start:'正在校验、建立回滚点并开启链路…',stop:'正在停止当前任务并恢复网络…',recover:'正在恢复上次现场…',preview:'正在使用本机 mihomo 内核校验配置…',import:'正在准备内核与 WARP 账户…','warp-register':'正在注册 WARP 账户…','deps-install':'正在下载并初始化内核与 WARP，连接失败会自动重试；总计最多 60 秒，可随时停止下载或退出。',probe:'正在执行 TLS / HTTPS 探针…',exit:'正在恢复网络并退出…'}[name]||'正在处理…');
     $('notice').classList.remove('hidden');
+    if(name==='deps-cancel')$('notice').textContent='正在停止下载…';
     schedulePoll(0);
   }catch(e){toast(e.message);}
 }
@@ -133,7 +134,13 @@ function render(){
   const busy=!!s.operation;
   ['start','stop','save','campus-save','import','preview','probe','capture','recover','exit','add-exception','deps-install','warp-register'].forEach(k=>$(k).disabled=busy);
   $('start').disabled=busy||['running','recovery','starting','stopping'].includes(s.phase);
-  $('stop').disabled=busy||!['running','recovery'].includes(s.phase);
+  const downloading=s.operation==='deps-install';
+  $('stop').disabled=!downloading&&(busy||!['running','recovery'].includes(s.phase));
+  $('stop').textContent=downloading?'停止下载':'停止并回滚';
+  $('deps-cancel').classList.toggle('hidden',!downloading);
+  $('deps-cancel').disabled=!downloading;
+  $('deps-install').textContent=downloading?'下载中（最多 60 秒）':'下载内核与 warpscout';
+  $('exit').disabled=busy&&!downloading;
   $('recover').disabled=busy||!['running','recovery'].includes(s.phase);
   $('online').textContent=s.api_online?'内核在线':'内核未连接';$('online').className='pill '+(s.api_online?'green':'muted');
   $('clock').textContent=new Date().toLocaleTimeString('zh-CN',{hour12:false});
@@ -203,7 +210,7 @@ if(window.chrome?.webview)window.chrome.webview.addEventListener('message',e=>{i
 document.querySelectorAll('[data-page]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(x=>x.addEventListener('click',()=>page(x.dataset.goto)));
 document.querySelectorAll('[data-plane]').forEach(x=>x.addEventListener('click',()=>{plane=x.dataset.plane;document.querySelectorAll('[data-plane]').forEach(b=>b.classList.toggle('active',b===x));renderTable();schedulePoll(0);}));
-for(const name of ['start','stop','import','preview','probe','recover','exit','warp-register','deps-install'])$(name).addEventListener('click',()=>action(name));
+for(const name of ['start','stop','import','preview','probe','recover','exit','warp-register','deps-install','deps-cancel'])$(name).addEventListener('click',()=>action(name==='stop'&&snapshot?.state.operation==='deps-install'?'deps-cancel':name));
 $('capture').addEventListener('click',()=>action(snapshot.capture.running||snapshot.state.capture_requested?'capture-stop':'capture-start'));
 for(const role of ['ai','default'])$('node-'+role).addEventListener('change',()=>{nodeDirty=true;renderNodes();});
 $('nodes-apply').addEventListener('click',()=>action('nodes-select',{ai_node:$('node-ai').value,default_node:$('node-default').value}));

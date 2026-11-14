@@ -157,6 +157,7 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
                     value = holder['desktop'].show() if holder.get('desktop') else {'message': '当前为无界面运行模式'}
                     return self.reply(200, value)
                 actions = {'start': manager.start, 'stop': manager.rollback,
+                    'deps-cancel': lambda: {'message': '下载已停止，可重新下载'},
                     'recover': manager.rollback, 'preview': manager.preview,
                     'import': manager.import_config, 'save': lambda: manager.save_settings(body),
                     'nodes-select': lambda: manager.select_nodes(body), 'nodes-probe': manager.probe_nodes,
@@ -167,9 +168,11 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
                     'probe': lambda: self.probe(manager), 'exit': lambda: self.exit_app(manager)}
                 if name not in actions:
                     return self.reply(404, {'error': '操作不存在'})
-                if not manager.operation.acquire(blocking=False):
+                if not manager.acquire_operation(name):
                     return self.reply(409, {'error': '上一项操作仍在进行，请稍候'})
                 job_id = secrets.token_hex(6)
+                if name == 'deps-install':
+                    manager.download_cancel = threading.Event()
                 manager.state['operation'] = name
                 manager.state['job'] = {'id': job_id, 'running': True}
                 def worker():
@@ -249,5 +252,9 @@ if __name__ == '__main__':
     parser.add_argument('--no-import', action='store_true', help='启动时不自动导入本机配置')
     parser.add_argument('--no-capture', action='store_true', help='启动时不开启物理网卡监控')
     parser.add_argument('--version', action='version', version=f'CampusLink {__version__}')
+    parser.add_argument('--deps-worker', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.deps_worker:
+        from campuslink.deps import worker_main
+        raise SystemExit(worker_main(args.deps_worker))
     serve(args.port, args.headless, not args.no_import, not args.no_capture)
