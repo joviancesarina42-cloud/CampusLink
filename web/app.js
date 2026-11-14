@@ -131,7 +131,7 @@ function chart(){
 function render(){
   const d=snapshot,s=d.state,c=d.capture;
   const busy=!!s.operation;
-  ['start','stop','save','import','preview','probe','capture','recover','exit','add-exception','deps-install','warp-register'].forEach(k=>$(k).disabled=busy);
+  ['start','stop','save','campus-save','import','preview','probe','capture','recover','exit','add-exception','deps-install','warp-register'].forEach(k=>$(k).disabled=busy);
   $('start').disabled=busy||['running','recovery','starting','stopping'].includes(s.phase);
   $('stop').disabled=busy||!['running','recovery'].includes(s.phase);
   $('recover').disabled=busy||!['running','recovery'].includes(s.phase);

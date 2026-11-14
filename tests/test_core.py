@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from campuslink.capture import decode_frame
 from campuslink.config import (CAMPUS_DIRECT, DEFAULTS, NATIVE, WARP_PROXY, build_config,
-                               discover, parse_endpoint, validate_settings)
+                               Settings, discover, parse_endpoint, validate_settings)
 from campuslink.probe import check_trace, read_exact, socks_connect
 from campuslink.traffic import DeltaTracker, Store, classify_connection, ip_family
 
@@ -145,6 +145,25 @@ class PolicyTests(unittest.TestCase):
         # IPv4 remains limited to the internal domain; the general native route is still strict.
         native=next(p for p in cfg['proxies'] if p['name']==NATIVE)
         self.assertEqual(native['ip-version'],'ipv6')
+
+    def test_new_settings_have_no_school_preset(self):
+        with tempfile.TemporaryDirectory() as temp, patch('campuslink.config.DATA', Path(temp)):
+            settings = Settings()
+        self.assertEqual(settings.value['campus_domains'], [])
+
+    def test_saved_campus_edits_and_empty_list_survive_restart(self):
+        with tempfile.TemporaryDirectory() as temp, patch('campuslink.config.DATA', Path(temp)):
+            settings = Settings()
+            for domains in (['portal.example.edu.cn', 'ipgw.example.edu.cn'], []):
+                settings.save(dict(settings.value, campus_domains=domains))
+                reloaded = Settings()
+                self.assertEqual(reloaded.value['campus_domains'], domains)
+                cfg = build_config({}, reloaded.value)
+                for domain in domains:
+                    self.assertIn('DOMAIN-SUFFIX,' + domain + ',' + CAMPUS_DIRECT, cfg['rules'])
+                    self.assertIn('+.' + domain, cfg['dns']['fake-ip-filter'])
+                if not domains:
+                    self.assertFalse(any(p['name'] == CAMPUS_DIRECT for p in cfg['proxies']))
 
     def test_campus_dns_uses_real_addresses_and_retains_existing_filters_and_exceptions(self):
         s,c=fixture();c['dns']['fake-ip-filter']=['+.pinned.example']

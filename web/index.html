@@ -47,8 +47,13 @@
   <label>mihomo 内核<input id="kernel_path" spellcheck="false" placeholder="留空则在 vendor、PATH 与 Clash Verge 目录中查找"></label>
   <label>warpscout<input id="warp_path" spellcheck="false"></label></details>
   <div class="form-actions"><button id="save" type="submit" class="primary">保存配置</button><button id="preview" type="button" class="outline">校验并查看覆盖内容</button><button id="deps-install" type="button" class="outline">下载内核与 warpscout</button></div></form></article>
-  <div><article class="panel"><div class="panel-head"><h3>IPv6 优先范围</h3><span class="pill green">广覆盖</span></div>
-  <label>内网直连域名（一行一个）<textarea id="campus_domains" rows="3" spellcheck="false" placeholder="example.edu.cn"></textarea></label>
+  <div><article class="panel"><div class="panel-head"><h3>校园网站直连</h3><span class="pill amber">允许 IPv4</span></div>
+  <p class="field-help">这些域名及其子域名直接连接校园网络，优先 IPv6，没有可用 IPv6 时允许 IPv4，不经过 WARP 或 VPN。</p>
+  <label>直连域名（一行一个，不含 https:// 或路径）<textarea id="campus_domains" rows="3" spellcheck="false" placeholder="portal.example.edu.cn&#10;ipgw.example.edu.cn"></textarea></label>
+  <p class="field-help">填写门户、IP 网关或认证网站的域名。填写学校根域名会同时放行全部子域名；只需放行某个网站时填写它的完整域名。这里使用真实 DNS 地址。</p>
+  <div class="form-actions"><button id="campus-save" type="submit" form="settings-form" class="primary">保存配置</button></div>
+  <p class="field-help">可添加其他学校域名；删除或清空即可取消对应直连。修改后先保存，再校验并开启；链路已开启时请先停止并回滚。下方显式例外优先于校园直连。</p></article>
+  <article class="panel"><div class="panel-head"><h3>IPv6 优先范围</h3><span class="pill green">广覆盖</span></div>
   <label>内网 IPv6 网段（一行一个）<textarea id="campus_cidrs" rows="2" spellcheck="false" placeholder="2001:da8:9000::/40"></textarea></label>
   <label class="check"><input id="native_cn" type="checkbox">国内域名尽量使用原生 IPv6</label>
   <label>额外原生 IPv6 域名（一行一个）<textarea id="native_domains" rows="3" spellcheck="false"></textarea></label></article>
