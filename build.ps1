@@ -38,13 +38,9 @@ try {
             throw ('发布包缺少启动文件：' + $name)
         }
     }
-    $lines = foreach ($name in @('CampusLink.exe', '启动 CampusLink.cmd', 'repair-start.ps1', '使用说明.txt')) {
-        $path = Join-Path $target $name
-        if (Test-Path -LiteralPath $path) {
-            '{0}  {1}' -f (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLower(), $name
-        }
-    }
-    if ($lines) { $lines | Set-Content -LiteralPath (Join-Path $target 'SHA256SUMS.txt') -Encoding utf8 }
+    # 发布包不附带 SHA256SUMS.txt。
+    $stale = Join-Path $target 'SHA256SUMS.txt'
+    if (Test-Path -LiteralPath $stale) { Remove-Item -LiteralPath $stale -Force }
     Write-Host '构建完成：dist\CampusLink\CampusLink.exe'
     Write-Host '运行前把 data\ 与 vendor\ 一并带上；这两项目录不进入版本库。'
 } finally {

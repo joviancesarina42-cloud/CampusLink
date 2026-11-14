@@ -127,7 +127,7 @@ function chart(){
   if(!w||!h)return;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);ctx.scale(dpr,dpr);
   const data=snapshot.history||[],left=76,right=w-8,top=12,bottom=h-23;
   const maximum=Math.max(1024,...data.map(x=>Math.max(x.ipv4,x.ipv6)))*1.15;
-  const ax=v=>v>=1048576?(v/1048576).toFixed(1)+' M/s':v>=1024?Math.round(v/1024)+' K/s':Math.round(v)+' B/s';
+  const ax=v=>v>=1048576?(v/1048576).toFixed(1)+' MB/s':v>=1024?Math.round(v/1024)+' KB/s':Math.round(v)+' B/s';
   ctx.font='11px "Microsoft YaHei UI",Segoe UI';ctx.textAlign='right';ctx.fillStyle='#a5b3bb';ctx.lineWidth=1;
   for(let i=0;i<4;i++){const y=top+(bottom-top)*i/3;ctx.beginPath();ctx.strokeStyle='#edf2f4';ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.fillText(ax(maximum*(1-i/3)),left-7,y+3);}
   const points=(key)=>data.map((v,i)=>[left+(right-left)*i/Math.max(89,data.length-1),bottom-(bottom-top)*(v[key]||0)/maximum]);
