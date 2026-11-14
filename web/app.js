@@ -31,6 +31,7 @@ function page(name){
   const titles={overview:'链路概览',nodes:'节点分流',traffic:'流量与连接',settings:'策略与配置',activity:'记录与恢复'};
   $('page-title').textContent=titles[name];
   $('subtitle').textContent='';
+  document.querySelector('main').scrollTop=0;
   if(name==='overview')requestAnimationFrame(chart);
   schedulePoll(0);
 }
@@ -122,8 +123,8 @@ function renderTable(){
 }
 function chart(){
   if(!snapshot||!$('overview').classList.contains('active'))return;
-  const c=$('chart'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=190;
-  if(!w)return;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);
+  const c=$('chart'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(!w||!h)return;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);ctx.scale(dpr,dpr);
   const data=snapshot.history||[],left=76,right=w-8,top=12,bottom=h-23;
   const maximum=Math.max(1024,...data.map(x=>Math.max(x.ipv4,x.ipv6)))*1.15;
   const ax=v=>v>=1048576?(v/1048576).toFixed(1)+' M/s':v>=1024?Math.round(v/1024)+' K/s':Math.round(v)+' B/s';
@@ -156,7 +157,7 @@ function render(){
   const wireOK=c.started!=null;const v6=totals('ipv6'),v4=totals('ipv4'),lan=totals('lan');
   $('wire-v6').textContent=wireOK||v6.total?bytes(v6.total):'—';$('wire-v4').textContent=wireOK||v4.total?bytes(v4.total):'—';
   $('wire-total').textContent=wireOK||v6.total+v4.total?bytes(v6.total+v4.total):'—';$('wire-lan').textContent=wireOK||lan.total?bytes(lan.total):'—';
-  $('wire-share').textContent=`IPv6 占比 ${v6.total+v4.total?(100*v6.total/(v6.total+v4.total)).toFixed(1)+'%':'—'} · 物理 IP 字节`;
+  $('wire-share').textContent=`IPv6 占比 ${v6.total+v4.total?(100*v6.total/(v6.total+v4.total)).toFixed(1)+'%':'—'}`;
   for(const [id,key]of[['v6','ipv6'],['v4','ipv4']]){const r=s.rates[key]||[0,0];$('rate-'+id).textContent=c.running?`↓ ${bytes(r[1])}/s   ↑ ${bytes(r[0])}/s`:'';}
   $('capture-label').textContent=c.running?`${c.interfaces.map(x=>x.Name).join(' / ')} · 丢包 ${c.dropped}`:s.capture_requested?'等待网络恢复':'已暂停';
   $('capture').textContent=c.running||s.capture_requested?'暂停监控':'开启监控';
