@@ -6,28 +6,28 @@
   <div class="brand"><div class="logo">6</div><div>CampusLink<small>IPv6 出口管理器</small></div></div>
   <div class="nav-label">工作台</div>
   <nav><button class="active" data-page="overview"><span>◫</span>链路概览</button><button data-page="nodes"><span>◇</span>节点分流</button><button data-page="traffic"><span>⇄</span>流量与连接</button><button data-page="settings"><span>⚙</span>策略与配置</button><button data-page="activity"><span>◷</span>记录与恢复</button></nav>
-  <div class="side-note"><i class="dot"></i>本机独立运行<p>关闭窗口后继续在托盘运行<br>右键托盘可退出并恢复网络。</p></div>
+  <div class="side-note"><i class="dot"></i>本机独立运行<p>关窗后仍在托盘运行</p></div>
   <button id="exit" class="exit">恢复原网络并退出 ↗</button>
 </aside>
 <main>
-<header><div><h1 id="page-title">链路概览</h1><p id="subtitle">看清每一条链路，优先通过 IPv6 通信。</p></div><div class="header-right"><span id="online" class="pill muted">连接中</span><span id="clock"></span></div></header>
+<header><div><h1 id="page-title">链路概览</h1><p id="subtitle"></p></div><div class="header-right"><span id="online" class="pill muted">连接中</span><span id="clock"></span></div></header>
 <div id="notice" class="notice hidden" role="status"></div>
 <div id="error-banner" class="notice error hidden"></div>
 <section id="overview" class="page active">
-  <div class="hero"><div><h2 id="phase-title">正在读取本机链路</h2><p id="phase-description">原生 IPv6 直连 · 指定域名走 WARP · 其余走 IPv6 出口</p></div><div class="hero-actions"><button id="start" class="primary">开启 IPv6 链路 <b>→</b></button><button id="stop" class="secondary">停止并回滚</button></div></div>
+  <div class="hero"><div><h2 id="phase-title">正在读取本机链路</h2><p id="phase-description"></p></div><div class="hero-actions"><button id="start" class="primary">开启 IPv6 链路 <b>→</b></button><button id="stop" class="secondary">停止并回滚</button></div></div>
   <div class="section-top"><h3>物理网卡流量</h3><div class="inline"><select id="day" aria-label="统计日期"></select><a id="export" class="text-btn" href="/api/export">导出增量 CSV ↗</a></div></div>
-  <div class="metrics"><article class="metric green"><div><span class="dot"></span>公网 IPv6</div><strong id="wire-v6">—</strong><p id="rate-v6">等待物理网卡采样</p></article><article class="metric amber"><div><span class="dot"></span>公网 IPv4</div><strong id="wire-v4">—</strong><p id="rate-v4">单独显示，便于排查</p></article><article class="metric"><div>公网总量</div><strong id="wire-total">—</strong><p id="wire-share">IPv6 占比 —</p></article><article class="metric"><div>局域网 / 本地地址</div><strong id="wire-lan">—</strong><p>与公网分开统计</p></article></div>
+  <div class="metrics"><article class="metric green"><div><span class="dot"></span>公网 IPv6</div><strong id="wire-v6">—</strong><p id="rate-v6"></p></article><article class="metric amber"><div><span class="dot"></span>公网 IPv4</div><strong id="wire-v4">—</strong><p id="rate-v4"></p></article><article class="metric"><div>公网总量</div><strong id="wire-total">—</strong><p id="wire-share">IPv6 占比 —</p></article><article class="metric"><div>局域网 / 本地地址</div><strong id="wire-lan">—</strong><p></p></article></div>
   <div class="two-col"><article class="panel chart-panel"><div class="panel-head"><h3>实时传输</h3><div class="legend"><span class="legend-v6">IPv6</span><span class="legend-v4">IPv4</span><span>最近 90 次采样</span></div></div><canvas id="chart" height="200" aria-label="IPv4 与 IPv6 实时流量曲线"></canvas><div class="chart-foot"><span id="capture-label">物理网卡监控尚未开启</span><button id="capture" class="text-btn">开启监控</button></div></article>
   <article class="panel"><div class="panel-head"><h3>两条隧道</h3><button id="probe" class="text-btn">执行 HTTPS 检查 ↗</button></div><div class="link-row"><div class="link-icon">W</div><div><strong>WARP · IPv6 MASQUE</strong><p id="warp-detail">正在检查</p></div><span id="warp-status" class="pill muted">待验证</span></div><div class="link-row"><div class="link-icon blue">6</div><div><strong>机场 · IPv6 出站</strong><p id="airport-detail">正在检查</p></div><span id="airport-status" class="pill muted">待验证</span></div></article></div>
-  <article class="panel"><div class="panel-head"><h3>业务负载</h3><button class="text-btn" data-goto="traffic">查看连接明细 →</button></div><div class="business-summary" id="business-summary"></div><div class="explain">物理与业务分别计数，不相加。</div></article>
+  <article class="panel"><div class="panel-head"><h3>业务负载<span class="hint" data-tip="物理字节与业务字节分别统计，不能相加">?</span></h3><button class="text-btn" data-goto="traffic">查看连接明细 →</button></div><div class="business-summary" id="business-summary"></div></article>
 </section>
 <section id="nodes" class="page">
-  <div class="panel"><div class="panel-head"><h3>按服务选择节点</h3><span class="pill green">保持 IPv6 首跳</span></div><p class="field-help">AI 服务与默认出口可分别选节点；其余规则保持原生 IPv6。</p>
+  <div class="panel"><div class="panel-head"><h3>按服务选择节点<span class="hint" data-tip="链式节点多一跳：延迟增加，消耗两段流量">?</span></h3><span class="pill green">保持 IPv6 首跳</span></div>
   <div class="node-grid">
     <article class="node-card"><div class="node-card-head"><div class="link-icon blue">AI</div><div><strong>AI 服务</strong><p>ChatGPT / Claude / Gemini 等</p></div><span id="node-ai-status" class="pill muted">待验证</span></div><label>出口节点<select id="node-ai" aria-label="AI 服务节点"></select></label><div id="node-ai-route" class="node-route"></div><p id="node-ai-health" class="field-help"></p></article>
     <article class="node-card"><div class="node-card-head"><div class="link-icon">↗</div><div><strong>默认出口</strong><p>其余需要代理的通信</p></div><span id="node-default-status" class="pill muted">待验证</span></div><label>出口节点<select id="node-default" aria-label="默认出口节点"></select></label><div id="node-default-route" class="node-route"></div><p id="node-default-health" class="field-help"></p></article>
   </div><div class="form-actions"><button id="nodes-apply" class="primary">应用节点选择</button><button id="nodes-probe" class="outline">验证两个出口</button><span id="nodes-selection-state" class="field-help"></span></div>
-  <div class="explain">链式节点会多一跳，增加延迟并消耗两段流量。</div></div>
+  </div>
   <article class="panel"><div class="panel-head"><h3>分流覆盖</h3><span id="ai-rule-count" class="pill muted"></span></div><p id="ai-coverage" class="field-help"></p></article>
 </section>
 <section id="traffic" class="page">
@@ -35,12 +35,12 @@
 </section>
 <section id="settings" class="page">
   <div class="settings-grid"><article class="panel"><div class="panel-head"><h3>链路配置</h3><button id="import" class="text-btn">初始化本机依赖 ↗</button></div><form id="settings-form">
-  <label>运行方式<select id="mode"><option value="standalone">独立内核（推荐）</option><option value="attach">接管现有内核</option></select></label><p class="field-help">独立模式自带内核；接管模式复用已有客户端。</p>
-  <label>固定 IPv6 首跳入口（可选）<input id="airport_ipv6" spellcheck="false"></label><p class="field-help" id="airport-source"></p>
+  <label>运行方式<select id="mode"><option value="standalone">独立内核（自带）</option><option value="attach">接管已装客户端</option></select></label>
+  <label>IPv6 首跳入口<input id="airport_ipv6" spellcheck="false"></label><p class="field-help" id="airport-source"></p>
   <div class="form-row"><label>WARP SOCKS 端口<input id="socks_port" type="number" min="1024" max="65535"></label><label>独立代理端口<input id="mixed_port" type="number" min="1024" max="65535"></label><label>独立控制端口<input id="core_api_port" type="number" min="1024" max="65535"></label></div>
   <label>现有内核接口<input id="api" spellcheck="false"></label>
-  <label>WARP IPv6 端点（一行一个）<textarea id="endpoints" rows="4" spellcheck="false"></textarea></label>
-  <label>IPv6 DNS（一行一个，[IPv6]:端口）<textarea id="dns" rows="2" spellcheck="false"></textarea></label>
+  <label>WARP IPv6 端点<textarea id="endpoints" rows="4" spellcheck="false"></textarea></label>
+  <label>IPv6 DNS<textarea id="dns" rows="2" spellcheck="false"></textarea></label>
   <div class="form-row"><label>检查间隔 / 秒<input id="check_seconds" type="number" min="10" max="600"></label><label>连续失败后重建<input id="failure_threshold" type="number" min="2" max="10"></label></div>
   <details class="advanced"><summary>高级：配置来源与可执行文件</summary>
   <label>配置来源（完整 mihomo YAML）<input id="source_config" spellcheck="false" placeholder="留空则自动查找 Clash Verge 运行时配置"></label>
@@ -48,11 +48,11 @@
   <label>warpscout<input id="warp_path" spellcheck="false"></label></details>
   <div class="form-actions"><button id="save" type="submit" class="primary">保存配置</button><button id="preview" type="button" class="outline">校验并查看覆盖内容</button><button id="deps-install" type="button" class="outline">下载内核与 warpscout</button><button id="deps-cancel" type="button" class="outline hidden">停止下载</button></div></form></article>
   <div><article class="panel"><div class="panel-head"><h3>校园网站直连</h3><span class="pill amber">允许 IPv4</span></div>
-  <p class="field-help">这些域名及其子域名直接连接校园网络，优先 IPv6，没有可用 IPv6 时允许 IPv4，不经过 WARP 或 VPN。</p>
-  <label>直连域名（一行一个，不含 https:// 或路径）<textarea id="campus_domains" rows="3" spellcheck="false" placeholder="portal.example.edu.cn&#10;ipgw.example.edu.cn"></textarea></label>
-  <p class="field-help">填写门户、IP 网关或认证网站的域名。填写学校根域名会同时放行全部子域名；只需放行某个网站时填写它的完整域名。这里使用真实 DNS 地址。</p>
+  <p class="field-help">写学校门户和认证域名，一行一个。</p>
+  <label>直连域名<textarea id="campus_domains" rows="3" spellcheck="false" placeholder="portal.example.edu.cn&#10;ipgw.example.edu.cn"></textarea></label>
+  
   <div class="form-actions"><button id="campus-save" type="submit" form="settings-form" class="primary">保存配置</button></div>
-  <p class="field-help">可添加其他学校域名；删除或清空即可取消对应直连。修改后先保存，再校验并开启；链路已开启时请先停止并回滚。下方显式例外优先于校园直连。</p></article>
+  </article>
   <article class="panel"><div class="panel-head"><h3>IPv6 优先范围</h3><span class="pill green">广覆盖</span></div>
   <label>内网 IPv6 网段（一行一个）<textarea id="campus_cidrs" rows="2" spellcheck="false" placeholder="2001:da8:9000::/40"></textarea></label>
   <label class="check"><input id="native_cn" type="checkbox">国内域名尽量使用原生 IPv6</label>
@@ -65,10 +65,10 @@
   <label>WARP 网段（一行一个 IP-CIDR）<textarea id="warp_cidrs" rows="2" spellcheck="false"></textarea></label>
   <label>这些目标的 UDP<select id="warp_udp"><option value="block">阻断，促使回退 TCP</option><option value="airport">交给 IPv6 机场</option></select></label>
   <label class="check"><input id="tun" type="checkbox">独立模式启用 TUN 接管应用流量</label><label class="check"><input id="auto_capture" type="checkbox">打开工具时自动监控物理网卡</label><label>监控网卡（留空为全部）<input id="capture_interfaces" placeholder="如 WLAN；多个用逗号分隔"></label></article>
-  <article class="panel"><div class="panel-head"><h3>测试后逐项放宽</h3></div><p class="field-help">默认不放行公网 IPv4。</p><div id="exceptions"></div><div class="exception-form"><select id="exception-kind" aria-label="例外类型"><option value="domain">域名后缀</option><option value="process">进程名</option></select><input id="exception-value" placeholder="example.com 或 应用.exe" aria-label="例外目标"><select id="exception-route" aria-label="例外链路"><option value="airport">默认出口组</option><option value="ai">AI 服务组</option><option value="warp">IPv6 WARP（TCP）</option><option value="native">强制原生 IPv6</option><option value="ipv4">允许 IPv4 直连</option><option value="block">阻断</option></select><button id="add-exception" class="outline">添加</button></div></article></div></div>
-  <article id="preview-panel" class="panel hidden"><div class="panel-head"><h3>覆盖预览 · 内核校验结果</h3><span class="pill green">校验通过</span></div><pre id="preview-content"></pre></article>
+  <article class="panel"><div class="panel-head"><h3>测试后逐项放宽</h3></div><div id="exceptions"></div><div class="exception-form"><select id="exception-kind" aria-label="例外类型"><option value="domain">域名后缀</option><option value="process">进程名</option></select><input id="exception-value" placeholder="example.com 或 应用.exe" aria-label="例外目标"><select id="exception-route" aria-label="例外链路"><option value="airport">默认出口组</option><option value="ai">AI 服务组</option><option value="warp">IPv6 WARP（TCP）</option><option value="native">强制原生 IPv6</option><option value="ipv4">允许 IPv4 直连</option><option value="block">阻断</option></select><button id="add-exception" class="outline">添加</button></div></article></div></div>
+  <article id="preview-panel" class="panel hidden"><div class="panel-head"><h3>校验结果</h3><span class="pill green">校验通过</span></div><pre id="preview-content"></pre></article>
 </section>
 <section id="activity" class="page"><div class="two-col"><article class="panel"><div class="panel-head"><h3>配置恢复</h3></div><div class="recovery-box"><strong id="recovery-label">正在读取恢复记录</strong><button id="recover" class="outline">恢复上次现场</button></div></article><article class="panel"><div class="panel-head"><h3>采样与记录</h3></div><dl id="diagnostics"></dl></article></div><article class="panel"><div class="panel-head"><h3>操作与异常记录</h3></div><div id="events"></div></article></section>
-<footer>CampusLink <span>数据保存在 data 文件夹</span></footer>
+<footer>CampusLink</footer>
 </main><div id="toast" class="toast hidden" role="status"></div>
 </body></html>
