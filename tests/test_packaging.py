@@ -84,9 +84,11 @@ class ReleaseLauncherTests(unittest.TestCase):
             result = self.run_script(Path(temp), """
 function Start-Process {
     param($FilePath, $WorkingDirectory, $Verb, $ErrorAction)
-    if ($FilePath -ne (Join-Path $env:CL_TEST_ROOT 'CampusLink.exe') -or
-        $WorkingDirectory -ne $env:CL_TEST_ROOT -or $Verb -ne 'RunAs') {
-        throw 'wrong-launch-arguments'
+    # 临时目录在部分机器上是 8.3 短名（如 RUNNER~1），两个参数都先按同一方式解析再比较。
+    $root = (Get-Item -LiteralPath $env:CL_TEST_ROOT).FullName
+    if ($FilePath -ne (Join-Path $root 'CampusLink.exe') -or
+        $WorkingDirectory -ne $root -or $Verb -ne 'RunAs') {
+        throw "wrong-launch-arguments: file=$FilePath dir=$WorkingDirectory verb=$Verb root=$root"
     }
 };
 """, repair=False)

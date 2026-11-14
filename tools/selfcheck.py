@@ -13,6 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# 英文 Windows 控制台的 stdout 是 cp1252，打印中文会抛 UnicodeEncodeError。
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(errors='replace')
+
 from campuslink import __version__
 from campuslink.common import CREATE_NO_WINDOW, DATA, ROOT, VENDOR, is_admin, run
 from campuslink.config import Settings, discover

@@ -232,7 +232,11 @@ def serve(port=18686, headless=False, auto_import=True, auto_capture=True):
             manager.state['error'] = '自动导入尚未完成：' + str(e)
     write_json(DATA / 'app.json', {'pid': os.getpid(), 'port': port, 'started': time.time(), 'desktop': not headless})
     if sys.stdout:  # 打包成窗口程序时 stdout 为 None
-        print(f'CampusLink {__version__} → http://127.0.0.1:{port}/', flush=True)
+        # 英文 Windows 控制台的 stdout 是 cp1252，非 ASCII 字符会抛异常并终止启动。
+        try:
+            print(f'CampusLink {__version__} -> http://127.0.0.1:{port}/', flush=True)
+        except (OSError, UnicodeError):
+            pass
     if desktop:
         desktop.show()
     try:
