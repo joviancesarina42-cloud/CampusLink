@@ -26,6 +26,7 @@ from .traffic import DeltaTracker, Store, classify_connection, ip_family
 from .warp import Warp
 from .nodes import AI_GROUP, DEFAULT_GROUP, catalog, choices
 from .logs import start_logged
+from .firewall import prepare as prepare_firewall, apply as apply_firewall, restore as restore_firewall
 
 
 class Manager:
@@ -48,6 +49,7 @@ class Manager:
             'tun': False, 'mode': self.settings.value['mode'], 'health': {}, 'connections': [],
             'sample_time': None, 'capture_error': '', 'operation': '', 'watchdog_restores': 0,
             'kernel_counters': {}, 'admin': is_admin(), 'rates': {}, 'coverage': '尚未开始采样'}
+        self.state['bili_firewall'] = '待恢复' if self.journal and self.journal.get('bili_firewall') else '未接管'
         self.history = deque(maxlen=90)
         self.state['capture_requested'] = bool(auto_capture and self.settings.value['auto_capture'] and not self.journal)
         self.egress_evidence = {}
@@ -300,6 +302,8 @@ class Manager:
         if self.journal:
             raise RuntimeError('检测到未完成的恢复记录，请先点击“恢复上次现场”')
         s = copy.deepcopy(self.settings.value)
+        if s.get('bili_ipv4_udp_guard', True) and not is_admin():
+            raise RuntimeError('B 站 IPv4 UDP 防泄露需要管理员权限：请以管理员身份重新运行本程序')
         if s['warp_enable'] and not discover(s).get('account'):
             try:
                 register_warp(self.settings)
@@ -318,6 +322,7 @@ class Manager:
         text = render(cfg)
         kernel = discover(s)['kernel']
         validate_kernel(text, kernel)
+        firewall_plan = prepare_firewall(s) if s.get('bili_ipv4_udp_guard', True) else None
         backup_dir = DATA / 'backups' / datetime.now().strftime('%Y%m%d-%H%M%S-%f')
         backup_dir.mkdir(parents=True)
         atomic_write(backup_dir / 'candidate.yaml', text)
@@ -328,6 +333,8 @@ class Manager:
             journal = {'mode': s['mode'], 'backup': str(backup_dir), 'owned': {}, 'proxy': None,
                        'previous_api': existing.base, 'previous_secret': existing.secret,
                        'previous_tun': None, 'runtime': None, 'selectors': {}, 'stage': 'prepared'}
+            if firewall_plan:
+                journal['bili_firewall'] = firewall_plan
             if s['mode'] == 'attach':
                 original, selected, general = self._runtime_backup(existing)
                 self._assert_original(yaml.safe_load(original))
@@ -345,6 +352,12 @@ class Manager:
             with self.journal_lock:
                 self.journal = journal
                 write_json(DATA / 'recovery.json', journal)
+            if firewall_plan:
+                apply_firewall(firewall_plan)
+                self.state['bili_firewall'] = '已启用'
+                self.store.event('firewall', f'已启用 B 站 IPv4 UDP 防泄露（{len(firewall_plan["entries"])} 条规则，覆盖所有网卡）')
+            else:
+                self.state['bili_firewall'] = '配置已关闭'
             if s['mode'] == 'standalone':
                 if journal['previous_tun'] and journal['previous_tun'].get('enable'):
                     paused = dict(journal['previous_tun'], enable=False)
@@ -444,6 +457,13 @@ class Manager:
                 set_system_proxy(journal['proxy'])
             except Exception as e:
                 errors.append('系统代理恢复失败：' + str(e))
+        if journal.get('bili_firewall'):
+            try:
+                restore_firewall(journal['bili_firewall'])
+                self.state['bili_firewall'] = '已恢复开启前状态'
+            except Exception as e:
+                self.state['bili_firewall'] = '恢复未完成'
+                errors.append('B 站防火墙恢复失败：' + str(e))
         if errors:
             self.state.update(phase='recovery', error='；'.join(errors))
             raise RuntimeError(self.state['error'])

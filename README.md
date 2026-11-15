@@ -24,6 +24,8 @@
 
 未确认地址族的 UDP 交给支持 UDP 的 IPv6 出口；没有出口时明确阻断，不回落 IPv4。
 
+B 站播放器即使绑定物理网卡发送 IPv4 UDP，也由 Windows 防火墙直接阻断。默认随 IPv6 链路开启，覆盖所有网卡的入站与出站；停止、退出或启动失败时恢复开启前状态。规则修改前写入恢复记录，异常退出后可点「恢复上次现场」重试。
+
 ## 网络流量路径
 
 | 路径        | 走法                                    | 条件             |
@@ -92,6 +94,10 @@ python app.py
 
 **视频站不占 VPN 流量**：默认配置就是这样。TCP 走 WARP，UDP 被拒绝后播放器回退 TCP。想换成 VPN 传 UDP，把 `warp_udp` 改成 `airport`。
 
+**B 站 IPv4 UDP 防泄露**：「策略与配置 → WARP 与监控」可关闭防火墙防护，也可填写一个或多个 B 站程序的完整 exe 路径。留空时从已有 `CampusLink-Bili-IPv4UDP-*` 规则、运行中的播放器和安装位置自动识别；无法识别会提示填写路径，不会显示防护成功。防护独立于 WARP 开关和 `warp_udp`，仅影响这些程序的 IPv4 UDP，TCP 与 IPv6 不受此规则阻断。需管理员权限，且 Windows 防火墙必须启用。修改配置前先停止并回滚，保存后重新开启。
+
+已有同名前缀规则会先保存原状态再应用防护，缺少的方向会创建临时规则；停止时恢复原规则并删除本次新建规则。**开启前已启用的手动规则，停止后仍保持原来的启用状态**；若希望防护只随链路开启，可先禁用手动规则，再开启链路。关闭功能开关不会删除或禁用你原有的手动规则。
+
 **只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。让该目标走公网 IPv4，删除即撤销。
 
 **AI 走另一个地区**：在「节点分流」里给 AI 服务组单独选节点。
@@ -127,6 +133,8 @@ python app.py
 | `native_cn`                                      | 国内域名尽量走原生 IPv6（依赖 `geosite.dat`）                                              |
 | `warp_domains` / `warp_processes` / `warp_cidrs` | 走 WARP 的域名、进程与 IPv4 网段；默认已含 B 站                                               |
 | `warp_udp`                                       | 这些目标的 UDP：`block` 阻断促使回退 TCP，或 `airport` 交给 IPv6 VPN                          |
+| `bili_ipv4_udp_guard`                            | 默认 `true`，开启 IPv6 链路时在防火墙阻断 B 站程序的 IPv4 UDP，停止时还原                           |
+| `bili_ipv4_udp_programs`                         | 完整 exe 路径列表；默认 `[]`，自动识别 B 站程序。填写后仅保护指定程序                                 |
 | `warp_enable`                                    | 关闭后不加载 `CL-WARP`，也不生成相关规则                                                     |
 | `exceptions`                                     | 逐项放宽：`domain`/`process` × `airport`/`ai`/`warp`/`native`/`ipv4`/`block`       |
 | `default_node` / `ai_node`                       | 默认出口与 AI 服务组各自选择的节点（需要 VPN）                                                   |
@@ -140,6 +148,7 @@ app.py                 本机 HTTP 接口与启动入口
 campuslink/config.py   设置、节点断言、配置生成、内核校验、WARP 注册
 campuslink/deps.py     从官方 Release 下载内核与 warpscout
 campuslink/manager.py  开启/回滚、采样、健康检查
+campuslink/firewall.py B 站 IPv4 UDP 防泄露、规则备份与恢复
 campuslink/capture.py  Npcap 被动抓包与地址分类
 campuslink/traffic.py  增量计算与 SQLite 存储
 campuslink/warp.py     warpscout 守护与端点重扫

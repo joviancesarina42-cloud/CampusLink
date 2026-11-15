@@ -14,8 +14,8 @@ let nodeDirty=false,nodeCatalogKey='';
 let activePage='overview',pollTimer=null,polling=false,hostHidden=false,pollAgain=false;
 const textFields=['mode','airport_ipv6','api','warp_udp','source_config','kernel_path','warp_path'];
 const numberFields=['socks_port','mixed_port','core_api_port','check_seconds','failure_threshold'];
-const listFields=['endpoints','dns','campus_domains','campus_cidrs','native_domains','warp_domains','warp_processes','warp_cidrs'];
-const checkFields=['native_cn','warp_enable','tun','auto_capture'];
+const listFields=['endpoints','dns','campus_domains','campus_cidrs','native_domains','warp_domains','warp_processes','warp_cidrs','bili_ipv4_udp_programs'];
+const checkFields=['native_cn','warp_enable','tun','auto_capture','bili_ipv4_udp_guard'];
 
 function bytes(n){
   n=Number(n)||0;
@@ -137,6 +137,7 @@ function chart(){
 }
 function render(){
   const d=snapshot,s=d.state,c=d.capture;
+  $('bili-firewall-state').textContent='防火墙防泄露：'+(s.bili_firewall||'未接管');
   const busy=!!s.operation;
   ['start','stop','save','campus-save','import','preview','probe','capture','recover','exit','add-exception','deps-install','warp-register'].forEach(k=>$(k).disabled=busy);
   $('start').disabled=busy||['running','recovery','starting','stopping'].includes(s.phase);

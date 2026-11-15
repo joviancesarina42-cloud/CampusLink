@@ -19,6 +19,7 @@ from campuslink.traffic import DeltaTracker, Store, classify_connection, ip_fami
 
 def fixture():
     s = copy.deepcopy(DEFAULTS)
+    s['bili_ipv4_udp_guard'] = False  # Policy fixtures do not alter the host firewall.
     s.update(airport_source_name='JP-test', airport_source_host='entry.example',
              airport_ipv6='2001:4860:4860::8888',
              campus_domains=['example.edu.cn'],

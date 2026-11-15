@@ -69,6 +69,10 @@
   <label>WARP 进程（一行一个）<textarea id="warp_processes" rows="2" spellcheck="false"></textarea></label>
   <label>WARP 网段（一行一个 IP-CIDR）<textarea id="warp_cidrs" rows="2" spellcheck="false"></textarea></label>
   <label>这些目标的 UDP<select id="warp_udp"><option value="block">阻断，促使回退 TCP</option><option value="airport">交给 IPv6 VPN</option></select></label>
+  <label class="check"><input id="bili_ipv4_udp_guard" type="checkbox">链路开启时阻断 B 站 IPv4 UDP 泄露（防火墙）</label>
+  <p class="field-help">覆盖所有网卡的入站与出站 UDP，防止播放器绕过 IPv6 链路；停止或退出时恢复原规则。此开关独立于 WARP 和上方 UDP 策略。</p>
+  <label>B 站程序完整路径（一行一个，留空自动识别）<textarea id="bili_ipv4_udp_programs" rows="2" spellcheck="false" placeholder="D:\bilibili\哔哩哔哩.exe"></textarea></label>
+  <p id="bili-firewall-state" class="field-help">防火墙防泄露：未接管</p>
   <label class="check"><input id="tun" type="checkbox">独立模式启用 TUN 接管应用流量</label><label class="check"><input id="auto_capture" type="checkbox">打开工具时自动监控物理网卡</label><label>监控网卡（留空为全部）<input id="capture_interfaces" placeholder="如 WLAN；多个用逗号分隔"></label></article>
   <article class="panel"><div class="panel-head"><h3>测试后逐项放宽</h3></div><div id="exceptions"></div><div class="exception-form"><select id="exception-kind" aria-label="例外类型"><option value="domain">域名后缀</option><option value="process">进程名</option></select><input id="exception-value" placeholder="example.com 或 应用.exe" aria-label="例外目标"><select id="exception-route" aria-label="例外链路"><option value="airport">默认出口组</option><option value="ai">AI 服务组</option><option value="warp">IPv6 WARP（TCP）</option><option value="native">强制原生 IPv6</option><option value="ipv4">允许 IPv4 直连</option><option value="block">阻断</option></select><button id="add-exception" class="outline">添加</button></div></article></div></div>
   <article id="preview-panel" class="panel hidden"><div class="panel-head"><h3>校验结果</h3><span class="pill green">校验通过</span></div><pre id="preview-content"></pre></article>

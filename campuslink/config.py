@@ -12,6 +12,7 @@ import yaml
 from .common import DATA, ROOT, VENDOR, atomic_write, read_json, write_json, run
 from .nodes import AI_GROUP, ANCHOR, build_nodes
 from .entries import pin_entry, remap_selections, select_entry, v6_entry
+from .firewall import valid_program
 
 WARP_PROXY = 'CL-WARP'
 NATIVE = 'CL-原生IPv6'
@@ -39,6 +40,7 @@ DEFAULTS = {
     'warp_processes': ['哔哩哔哩.exe', 'bilibili.exe'],
     'warp_cidrs': ['111.33.0.0/16', '111.31.0.0/16', '182.48.108.0/24'],
     'warp_udp': 'block',
+    'bili_ipv4_udp_guard': True, 'bili_ipv4_udp_programs': [],
     'native_cn': True, 'exceptions': [],
     'dns': ['[2400:3200::1]:53', '[2402:4e00::]:53'],
     'capture_interfaces': [], 'check_seconds': 25, 'failure_threshold': 3,
@@ -53,6 +55,11 @@ DEFAULTS = {
 
 
 def validate_settings(s):
+    if not isinstance(s['bili_ipv4_udp_guard'], bool):
+        raise ValueError('B 站 IPv4 UDP 防泄露开关必须为布尔值')
+    if not isinstance(s['bili_ipv4_udp_programs'], list) or any(
+            not valid_program(p) for p in s['bili_ipv4_udp_programs']):
+        raise ValueError('B 站防泄露程序必须为完整 exe 路径（一行一个，不使用通配符）')
     if s['mode'] not in ('attach', 'standalone'):
         raise ValueError('运行方式无效')
     if s['airport_ipv6'] and not is_global_v6(s['airport_ipv6']):
