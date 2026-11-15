@@ -22,9 +22,9 @@
 
 物理网卡抓包与内核连接列表分别记账，IPv4/IPv6/隧道/无法确认四类分开显示。
 
-未确认地址族的 UDP 交给支持 UDP 的 IPv6 出口；没有出口时明确阻断，不回落 IPv4。
+未确认地址族的 UDP 交给支持 UDP 的 IPv6 出口；没有出口时阻断。
 
-B 站播放器即使绑定物理网卡发送 IPv4 UDP，也由 Windows 防火墙直接阻断。默认随 IPv6 链路开启，覆盖所有网卡的入站与出站；停止、退出或启动失败时恢复开启前状态。规则修改前写入恢复记录，异常退出后可点「恢复上次现场」重试。
+可添加 Windows 防火墙规则阻断物理网卡发送 IPv4 UDP。
 
 ## 网络流量路径
 
@@ -94,22 +94,18 @@ python app.py
 
 **视频站不占 VPN 流量**：默认配置就是这样。TCP 走 WARP，UDP 被拒绝后播放器回退 TCP。想换成 VPN 传 UDP，把 `warp_udp` 改成 `airport`。
 
-**B 站 IPv4 UDP 防泄露**：「策略与配置 → WARP 与监控」可关闭防火墙防护，也可填写一个或多个 B 站程序的完整 exe 路径。留空时从已有 `CampusLink-Bili-IPv4UDP-*` 规则、运行中的播放器和安装位置自动识别；无法识别会提示填写路径，不会显示防护成功。防护独立于 WARP 开关和 `warp_udp`，仅影响这些程序的 IPv4 UDP，TCP 与 IPv6 不受此规则阻断。需管理员权限，且 Windows 防火墙必须启用。修改配置前先停止并回滚，保存后重新开启。
+**B 站 IPv4 UDP 防泄露**：填写一个或多个 B 站程序的完整 exe 路径；留空自动识别，无法识别时会提示填写。开启链路时由 Windows 防火墙阻断这些程序的 IPv4 UDP，链路关闭后去除规则、恢复原状态。
 
-已有同名前缀规则会先保存原状态再应用防护，缺少的方向会创建临时规则；停止时恢复原规则并删除本次新建规则。**开启前已启用的手动规则，停止后仍保持原来的启用状态**；若希望防护只随链路开启，可先禁用手动规则，再开启链路。关闭功能开关不会删除或禁用你原有的手动规则。
-
-**只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。让该目标走公网 IPv4，删除即撤销。
+**只有 IPv4 的服务**：在例外里加 `{"kind":"domain","value":"example.com","route":"ipv4"}`。
 
 **AI 走另一个地区**：在「节点分流」里给 AI 服务组单独选节点。
-
-**VPN 入口是域名**：导入时工具会解析一次 AAAA，把能解析到公网 IPv6 的那个节点作为首跳并锁定地址；解析不到 IPv6 的节点不会被选为首跳。
 
 ## 两种运行方式
 
 - **独立内核（默认）**：内核与 WARP 均由工具管理，用 `17897` 代理、`17979` 控制、`11081` WARP SOCKS。会临时暂停本机已有的 TUN 并接管系统代理，停止时恢复。
 - **接管现有内核**：通过 `external-controller` 热加载覆盖策略，复用现有客户端的管理员能力。开启前校对运行规则与文件、保存原配置与策略组选择。
 
-工具不按过期域名模糊匹配节点：首跳必须唯一命中导入时的节点名与入口，所选出口也必须仍然存在。**订阅改名或换入口后，先停止回滚、更新订阅、重新导入。**
+工具必须能匹配到导入时的节点名与入口，所选出口也必须仍然存在。**订阅改名或换入口后，先停止回滚、更新订阅、重新导入。**
 
 ## 监控口径
 
@@ -119,11 +115,11 @@ python app.py
 
 ## 配置项
 
-设置页可以直接改，「高级」里的路径类配置也可以写进 `data/settings.json`。
+设置页。配置写进 `data/settings.json`。
 
 | 键                                                | 含义                                                                            |
 | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `mode`                                           | `standalone` 自带内核；`attach` 接管已有内核（热加载配置，不改订阅文件）                               |
+| `mode`                                           | `standalone` 自带内核；`attach` 接管已有内核（热加载配置）                               |
 | `source_config`                                  | 完整 mihomo 配置路径；留空则自动查找 Clash Verge 运行时配置                                      |
 | `kernel_path` / `warp_path` / `warp_account`     | 内核、`warpscout`、WARP 账户路径；留空自动查找                                               |
 | `airport_ipv6`                                   | 固定 IPv6 首跳入口。**留空即「仅 WARP」模式**，不加载 VPN 节点。订阅里入口写的是域名也没关系：导入时解析一次 AAAA 并锁定为字面量 |
@@ -134,7 +130,7 @@ python app.py
 | `warp_domains` / `warp_processes` / `warp_cidrs` | 走 WARP 的域名、进程与 IPv4 网段；默认已含 B 站                                               |
 | `warp_udp`                                       | 这些目标的 UDP：`block` 阻断促使回退 TCP，或 `airport` 交给 IPv6 VPN                          |
 | `bili_ipv4_udp_guard`                            | 默认 `true`，开启 IPv6 链路时在防火墙阻断 B 站程序的 IPv4 UDP，停止时还原                           |
-| `bili_ipv4_udp_programs`                         | 完整 exe 路径列表；默认 `[]`，自动识别 B 站程序。填写后仅保护指定程序                                 |
+| `bili_ipv4_udp_programs`                         | 完整 exe 路径列表；默认 `[]`，自动识别 B 站程序。                                 |
 | `warp_enable`                                    | 关闭后不加载 `CL-WARP`，也不生成相关规则                                                     |
 | `exceptions`                                     | 逐项放宽：`domain`/`process` × `airport`/`ai`/`warp`/`native`/`ipv4`/`block`       |
 | `default_node` / `ai_node`                       | 默认出口与 AI 服务组各自选择的节点（需要 VPN）                                                   |
@@ -162,7 +158,7 @@ tests/                 离线回归测试
 
 [mihomo API](https://wiki.metacubex.one/api/) · [mihomo v1.18.6 direct 实现](https://github.com/MetaCubeX/mihomo/blob/v1.18.6/adapter/outbound/direct.go) · [warpscout](https://github.com/vernette/warpscout) · [MetaCubeXD](https://github.com/MetaCubeX/metacubexd) · [Npcap](https://npcap.com/guide/npcap-devguide.html)
 
-本项目直接调用上述组件，未复制它们的界面代码。与 Cloudflare、MetaCubeX、Verge 无隶属关系。
+本项目直接调用上述组件，未复制代码。与 Cloudflare、MetaCubeX、Verge 无隶属关系。
 
 ## License
 
